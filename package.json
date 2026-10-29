@@ -1,0 +1,93 @@
+{
+  "name": "@rakiastudio/unica",
+  "version": "0.0.0",
+  "description": "Unique-solution puzzle generator built on exact cover. Generates puzzles that are guaranteed to have exactly one solution and are minimal (no clue can be removed).",
+  "keywords": [
+    "puzzle",
+    "generator",
+    "exact-cover",
+    "dancing-links",
+    "algorithm-x",
+    "sudoku",
+    "polyomino",
+    "pentomino",
+    "unique-solution",
+    "typescript"
+  ],
+  "license": "MIT",
+  "author": "RakiaStudio <contact@rakiastudio.com> (https://rakiastudio.com)",
+  "homepage": "https://github.com/RakiaStudio/unica#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/RakiaStudio/unica.git"
+  },
+  "bugs": {
+    "url": "https://github.com/RakiaStudio/unica/issues"
+  },
+  "type": "module",
+  "sideEffects": false,
+  "engines": {
+    "node": ">=20"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./sudoku": {
+      "types": "./dist/puzzles/sudoku/index.d.ts",
+      "import": "./dist/puzzles/sudoku/index.js"
+    },
+    "./polyomino": {
+      "types": "./dist/puzzles/polyomino/index.d.ts",
+      "import": "./dist/puzzles/polyomino/index.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "files": [
+    "dist",
+    "README.md",
+    "README.ja.md",
+    "LICENSE",
+    "CHANGELOG.md"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "lint": "eslint .",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
+    "bench": "vitest bench --run",
+    "check": "npm run lint && npm run typecheck && npm run test && npm run build",
+    "changeset": "changeset",
+    "version": "changeset version",
+    "release": "npm run build && changeset publish",
+    "prepublishOnly": "npm run check"
+  },
+  "dependencies": {
+    "dancing-links": "^4.3.10"
+  },
+  "devDependencies": {
+    "@changesets/cli": "^3.0.3",
+    "@commitlint/cli": "^19.8.1",
+    "@commitlint/config-conventional": "^19.8.1",
+    "@eslint/js": "^10.0.1",
+    "@types/node": "^22.20.5",
+    "@vitest/coverage-v8": "^3.2.7",
+    "eslint": "^10.13.0",
+    "fast-check": "^4.10.2",
+    "prettier": "^3.9.10",
+    "typescript": "^5.9.3",
+    "typescript-eslint": "^8.72.1",
+    "vitest": "^3.2.7"
+  },
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
+  }
+}

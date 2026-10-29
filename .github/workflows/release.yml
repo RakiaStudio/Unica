@@ -1,0 +1,58 @@
+name: Release
+
+# How releases work:
+# 1. Every merged change carries a changeset. On push to main, changesets/action
+#    opens (or updates) a "chore(release): version packages" PR with the version
+#    bump and CHANGELOG entry.
+# 2. Merging that PR runs this workflow again; now there are no pending
+#    changesets, so the action publishes to npm with provenance.
+#
+# Two repository settings are required, both documented in CONTRIBUTING.md:
+# - Settings > Actions > General > Workflow permissions:
+#   "Allow GitHub Actions to create and approve pull requests" must be ON,
+#   otherwise step 1 fails with "GitHub Actions is not permitted to create or
+#   approve pull requests".
+# - PRs opened with GITHUB_TOKEN do not trigger other workflows, so the release
+#   PR shows no CI checks. Branch protection must therefore let administrators
+#   bypass the required checks (do not enable "Include administrators"), or the
+#   release PR cannot be merged. This is safe: `npm run release` runs
+#   `prepublishOnly`, which executes the full `npm run check` before publishing.
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+  pull-requests: write
+  id-token: write # npm provenance
+
+concurrency: release-${{ github.ref }}
+
+jobs:
+  release:
+    name: changesets
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          registry-url: https://registry.npmjs.org
+      - run: npm ci
+      - name: Create release PR or publish to npm
+        uses: changesets/action@v1
+        with:
+          publish: npm run release
+          title: 'chore(release): version packages'
+          commit: 'chore(release): version packages'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # setup-node's registry-url writes an .npmrc that reads NODE_AUTH_TOKEN;
+          # changesets/action reads NPM_TOKEN. Provide both so publishing works
+          # regardless of which .npmrc wins.
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
