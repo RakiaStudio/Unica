@@ -79,6 +79,56 @@ s.classify('..3.2.6..9..3.5..1..18.64....81.29..7.......8..67.82....26.95..8..2.
 // 'unique' | 'multiple' | 'none'
 ```
 
+### Sudoku difficulty
+
+`rate` solves a sudoku the way a person would, with the techniques below tried
+weakest first, and reports the strongest one it needed. `explain` prints every
+step with its reason.
+
+```ts
+const s = sudoku();
+
+const puzzle = s.generate({ seed: 'daily-2026-10-29', difficulty: 'medium' });
+puzzle.rating.difficulty; // 'medium'
+puzzle.rating.hardest; // 'naked pair'
+puzzle.attempts; // 12: puzzles generated until one rated medium
+puzzle.seed; // 'daily-2026-10-29:12' — s.generate({ seed }) gives this puzzle directly
+
+s.rate(puzzle.text.puzzle); // { solved, difficulty, hardest, steps }
+s.explain(puzzle.text.puzzle);
+// [ '1. Naked single: r1c3 can only be 8',
+//   '2. Hidden single: 6 can only go in r2c2 within row 2',
+//   ...
+//   '23. Naked pair: r7c4 and r7c6 hold only 2 and 5 between them, so 2 and 5 leave the other cells of row 7',
+//   ...
+//   'Solved: medium, hardest technique naked pair.' ]
+```
+
+| Difficulty | Meaning                                                         |
+| ---------- | --------------------------------------------------------------- |
+| `easy`     | naked and hidden singles are enough                             |
+| `medium`   | also needs a naked pair, hidden pair, pointing or claiming      |
+| `hard`     | also needs a naked triple, hidden triple or x-wing              |
+| `beyond`   | these techniques get stuck (a generated puzzle is still unique) |
+
+The difficulty is the strongest technique needed, not a sum of step scores:
+a sum needs weights nobody can justify, and cannot be explained to a solver
+([ADR-0003](./docs/adr/0003-difficulty-by-hardest-technique.md)). Clue count and
+difficulty are separate things: the 17-clue puzzle in the test suite has the
+fewest clues possible and rates `easy`.
+
+Generating to a difficulty retries with seeds derived from yours (attempt `k`
+uses `` `${seed}:${k}` ``), so the same seed always gives the same puzzle.
+Hard puzzles are rare (about 1 in 300 minimal 9x9 puzzles), so:
+
+- `generate({ difficulty })` throws `ExactCoverError` when `maxAttempts`
+  (default 2000) runs out. For `hard` we expect that about 0.1% of the time;
+  callers should catch it, for example by retrying with another seed.
+- `hard` generation can take seconds (see [Performance](#performance)). In an
+  app with a UI, run it off the main thread, for example in a Web Worker.
+
+Rating supports grids of up to 32 symbols.
+
 ### Polyomino tiling
 
 ```ts
@@ -200,18 +250,18 @@ Design decisions that were not obvious are recorded as ADRs in
 
 The core API is small on purpose.
 
-| Function                                 | Returns                                                      |
-| ---------------------------------------- | ------------------------------------------------------------ |
-| `classify(problem, clues, solver?)`      | `{ count: 'none' \| 'unique' \| 'multiple', solution }`      |
-| `isUnique(problem, clues, solver?)`      | `boolean`                                                    |
-| `isMinimal(problem, clues, solver?)`     | `boolean` (unique, and no clue is redundant)                 |
-| `solveUnique(problem, clues, solver?)`   | the solution, or `undefined`                                 |
-| `generate(problem, options?)`            | `{ seed, clues, solution, removed, minimal }`                |
-| `randomSolution(problem, rng, solver?)`  | one solution, randomised through the row order               |
-| `restrictToClues(problem, clues)`        | the restricted problem and a row map                         |
-| `createRng(seed)`, `permutation(n, rng)` | deterministic randomness                                     |
-| `sudoku(options?)`                       | reduction, `parse`/`format`, `generate`, `solve`, `classify` |
-| `polyominoTiling(options)`               | reduction, `orientations`, `format`, `generate`              |
+| Function                                 | Returns                                                                         |
+| ---------------------------------------- | ------------------------------------------------------------------------------- |
+| `classify(problem, clues, solver?)`      | `{ count: 'none' \| 'unique' \| 'multiple', solution }`                         |
+| `isUnique(problem, clues, solver?)`      | `boolean`                                                                       |
+| `isMinimal(problem, clues, solver?)`     | `boolean` (unique, and no clue is redundant)                                    |
+| `solveUnique(problem, clues, solver?)`   | the solution, or `undefined`                                                    |
+| `generate(problem, options?)`            | `{ seed, clues, solution, removed, minimal }`                                   |
+| `randomSolution(problem, rng, solver?)`  | one solution, randomised through the row order                                  |
+| `restrictToClues(problem, clues)`        | the restricted problem and a row map                                            |
+| `createRng(seed)`, `permutation(n, rng)` | deterministic randomness                                                        |
+| `sudoku(options?)`                       | reduction, `parse`/`format`, `generate`, `solve`, `classify`, `rate`, `explain` |
+| `polyominoTiling(options)`               | reduction, `orientations`, `format`, `generate`                                 |
 
 `GenerateOptions`: `seed`, `solver`, `solution` (start from a known solution; one
 that is not an exact cover is rejected with `ExactCoverError`),
@@ -236,6 +286,12 @@ solver in `test/helpers/brute-force.ts` that shares no code with `src/`.
   and minimal by `isMinimal`; `generate` is a fixed point under reduction; on a
   product of independent binary choices the generator keeps exactly one clue per
   choice; `permutation` is always a bijection.
+- **Soundness of the sudoku techniques** (`fast-check`): over generated 4x4, 6x6
+  and 9x9 puzzles (including ones generated to `medium` and `hard`), every
+  technique is asked for a step at every state the rater passes through, and
+  every placement and elimination is checked against the oracle's solution. A
+  solved rating must end on that solution. Each technique also has unit tests on
+  handcrafted candidate states.
 - **Coverage**: 98% statements. The uncovered lines are defensive
   branches for states the type system cannot rule out.
 - **The published package**: after every release, a workflow installs the new
@@ -259,15 +315,18 @@ npm run check       # lint + typecheck + test + build, same as CI
 ## Performance
 
 Measured with `npm run bench` on a single core (Node 22). "Generate" includes
-finding a random solution and the full minimality pass.
+finding a random solution and the full minimality pass. The `hard` row was
+measured over 100 seeds on the same setup (median 101 attempts, worst 1147).
+These are the values we measured on that setup, not promises.
 
-| Task                                     | Time     |
-| ---------------------------------------- | -------- |
-| Classify an empty 9x9 sudoku (limit 2)   | ~0.13 ms |
-| Generate a minimal 9x9 sudoku            | ~6.5 ms  |
-| Generate a minimal 16x16 sudoku          | ~1.4 s   |
-| Find one 6x10 pentomino tiling           | ~3 ms    |
-| Generate a minimal 6x10 pentomino puzzle | ~12 ms   |
+| Task                                     | Time                         |
+| ---------------------------------------- | ---------------------------- |
+| Classify an empty 9x9 sudoku (limit 2)   | ~0.13 ms                     |
+| Generate a minimal 9x9 sudoku            | ~6.5 ms                      |
+| Generate a minimal 16x16 sudoku          | ~1.4 s                       |
+| Find one 6x10 pentomino tiling           | ~3 ms                        |
+| Generate a minimal 6x10 pentomino puzzle | ~12 ms                       |
+| Generate a 9x9 sudoku rated `hard`       | median ~0.3 s, worst a few s |
 
 Generation cost is dominated by the number of clues times the cost of one
 bounded solve. Keeping that solve cheap is the engine's job, which is why the
@@ -275,10 +334,6 @@ engine is a dependency and not a rewrite.
 
 ## Roadmap
 
-- **v0.2 — difficulty with reasons.** A human-technique solver for sudoku
-  (singles, hidden singles, pairs, …) that rates a puzzle by the strongest
-  technique it needs and returns the log of techniques used. The generator will
-  accept a target difficulty.
 - **Playable demo** on GitHub Pages, generating in the browser.
 - **More reductions**: N-queens, kakuro, and other puzzles with a clean exact
   cover formulation.

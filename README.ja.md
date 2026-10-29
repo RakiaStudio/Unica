@@ -56,6 +56,45 @@ s.solve(puzzle.text.puzzle); // 唯一解をテキストで。無い・複数な
 s.classify(text).count; // 'unique' | 'multiple' | 'none'
 ```
 
+### 数独の難易度
+
+`rate` は人が解くのと同じ手順で数独を解きます。下の手筋を弱いものから順に試し、必要になった最も強い手筋を返します。`explain` は各手順をその理由とともに出力します。
+
+```ts
+const s = sudoku();
+
+const puzzle = s.generate({ seed: 'daily-2026-10-29', difficulty: 'medium' });
+puzzle.rating.difficulty; // 'medium'
+puzzle.rating.hardest; // 'naked pair'
+puzzle.attempts; // 12: medium になるまでに生成した問題の数
+puzzle.seed; // 'daily-2026-10-29:12'。s.generate({ seed }) でこの問題が直接得られる
+
+s.rate(puzzle.text.puzzle); // { solved, difficulty, hardest, steps }
+s.explain(puzzle.text.puzzle);
+// [ '1. Naked single: r1c3 can only be 8',
+//   '2. Hidden single: 6 can only go in r2c2 within row 2',
+//   ...
+//   '23. Naked pair: r7c4 and r7c6 hold only 2 and 5 between them, so 2 and 5 leave the other cells of row 7',
+//   ...
+//   'Solved: medium, hardest technique naked pair.' ]
+```
+
+| 難易度   | 意味                                                                   |
+| -------- | ---------------------------------------------------------------------- |
+| `easy`   | naked single と hidden single だけで解ける                             |
+| `medium` | naked pair、hidden pair、pointing、claiming のどれかも必要             |
+| `hard`   | naked triple、hidden triple、x-wing のどれかも必要                     |
+| `beyond` | これらの手筋では詰まる（生成した問題なら唯一解であることは変わらない） |
+
+難易度は「必要になった最も強い手筋」で決め、手順ごとの点数の合計にはしていません。合計には根拠を示せない重みが要り、解く人に説明もできないからです（[ADR-0003](./docs/adr/0003-difficulty-by-hardest-technique.md)）。手がかりの数と難易度は別物です。テストにある17手がかりの問題は手がかりが最少でありながら `easy` です。
+
+難易度を指定した生成は、与えたシードから派生したシードでやり直します（`k` 回目は `` `${seed}:${k}` ``）。そのため同じシードからは常に同じ問題が得られます。hard は稀（極小な 9x9 の約300問に1問）なので、次の2点に注意してください。
+
+- `generate({ difficulty })` は `maxAttempts`（既定 2000）を使い切ると `ExactCoverError` を投げます。`hard` では約0.1%の見込みです。呼ぶ側で受け止めてください（別のシードでやり直す、など）。
+- `hard` の生成は数秒かかることがあります（[性能](#性能)を参照）。画面のあるアプリでは、Web Worker などでメインスレッドの外で回すのを勧めます。
+
+格付けできるのは記号が32種類以下の盤までです。
+
 ### ポリオミノ詰め
 
 ```ts
@@ -161,18 +200,18 @@ flowchart LR
 
 コアのAPIは意図的に小さくしてあります。
 
-| 関数                                     | 返り値                                                  |
-| ---------------------------------------- | ------------------------------------------------------- |
-| `classify(problem, clues, solver?)`      | `{ count: 'none' \| 'unique' \| 'multiple', solution }` |
-| `isUnique(problem, clues, solver?)`      | `boolean`                                               |
-| `isMinimal(problem, clues, solver?)`     | `boolean`（唯一解で、かつ冗長な手がかりが無い）         |
-| `solveUnique(problem, clues, solver?)`   | 解。無い・複数なら `undefined`                          |
-| `generate(problem, options?)`            | `{ seed, clues, solution, removed, minimal }`           |
-| `randomSolution(problem, rng, solver?)`  | 行順をシャッフルして得た解を1つ                         |
-| `restrictToClues(problem, clues)`        | 制限した問題と行の対応表                                |
-| `createRng(seed)`、`permutation(n, rng)` | 決定的な乱数                                            |
-| `sudoku(options?)`                       | 変換、`parse`/`format`、`generate`、`solve`、`classify` |
-| `polyominoTiling(options)`               | 変換、`orientations`、`format`、`generate`              |
+| 関数                                     | 返り値                                                                     |
+| ---------------------------------------- | -------------------------------------------------------------------------- |
+| `classify(problem, clues, solver?)`      | `{ count: 'none' \| 'unique' \| 'multiple', solution }`                    |
+| `isUnique(problem, clues, solver?)`      | `boolean`                                                                  |
+| `isMinimal(problem, clues, solver?)`     | `boolean`（唯一解で、かつ冗長な手がかりが無い）                            |
+| `solveUnique(problem, clues, solver?)`   | 解。無い・複数なら `undefined`                                             |
+| `generate(problem, options?)`            | `{ seed, clues, solution, removed, minimal }`                              |
+| `randomSolution(problem, rng, solver?)`  | 行順をシャッフルして得た解を1つ                                            |
+| `restrictToClues(problem, clues)`        | 制限した問題と行の対応表                                                   |
+| `createRng(seed)`、`permutation(n, rng)` | 決定的な乱数                                                               |
+| `sudoku(options?)`                       | 変換、`parse`/`format`、`generate`、`solve`、`classify`、`rate`、`explain` |
+| `polyominoTiling(options)`               | 変換、`orientations`、`format`、`generate`                                 |
 
 `GenerateOptions`：`seed`、`solver`、`solution`（既知の解から始める。exact cover になっていない解は `ExactCoverError`）、`stopAtClues`（削減を途中で止める。結果は唯一解だが極小とは限らず、`minimal` がそれを示す）。
 
@@ -184,6 +223,7 @@ flowchart LR
 
 - **答えの分かっている fixture**：Knuth の例題（被覆は `{B, D, F}` の1通り）、17手がかりの数独（17 は唯一解に必要な手がかり数の証明済み最小値、McGuire・Tugemann・Civario、2012）、63種の固定ペントミノ、3x20 の長方形の8通りの敷き詰め（対称を除いて2通り、×4）。
 - **プロパティテスト**（`fast-check`）：ランダムなシードに対して、生成した数独（4x4、9x9）と 3x20 のペントミノ問題がすべて oracle で唯一解かつ `isMinimal` で極小であること、`generate` の出力が削減の不動点であること、独立な二択の積では各選択につきちょうど1つの手がかりが残ること、`permutation` が常に全単射であること。
+- **数独の手筋の健全性**（`fast-check`）：生成した 4x4、6x6、9x9 の問題（`medium` と `hard` を指定して生成したものを含む）について、格付けが通るすべての局面ですべての手筋に手順を求め、その配置と候補の削除をすべて oracle の解と照合します。解き切った格付けは、その解で終わらなければなりません。各手筋には手作りの候補盤による単体テストもあります。
 - **カバレッジ**：文 98%。未到達行は型で排除できない状態に対する防御分岐です。
 - **公開されたパッケージ**：リリースのたびに、ワークフローが新しい版を npm から空のディレクトリへ利用者と同じ手順で入れ、`npm audit signatures` でレジストリの署名と provenance を確かめてから `scripts/verify-published.mjs` を実行します。このスクリプトは `src/` ともテストともコードを共有しません。自前のバックトラック探索をまず既知の数（4x4 数独の完成盤 288 通り、3x20 の長方形の敷き詰め 8 通り）で確かめ、そのうえで生成した問題が唯一解・極小・再現可能であること、README の例が書いてあるとおりに出力されることを確かめます。成否と実行へのリンクは GitHub のリリースに追記されます。これは公開物が保証を守っていることの確認であって、安全性の審査ではありません。
 
@@ -195,21 +235,21 @@ npm run check       # lint + typecheck + test + build。CI と同じ
 
 ## 性能
 
-`npm run bench`（Node 22、1コア）の計測値。「生成」はランダムな解の取得と極小化の1周を含みます。
+`npm run bench`（Node 22、1コア）の計測値。「生成」はランダムな解の取得と極小化の1周を含みます。`hard` の行は同じ環境でシード100個について測りました（試行回数は中央値101回、最悪1147回）。いずれも測定した条件での値で、速さを保証するものではありません。
 
-| 処理                                 | 時間       |
-| ------------------------------------ | ---------- |
-| 空の 9x9 数独の classify（上限2）    | 約 0.13 ms |
-| 極小な 9x9 数独の生成                | 約 6.5 ms  |
-| 極小な 16x16 数独の生成              | 約 1.4 s   |
-| 6x10 ペントミノ敷き詰めを1つ見つける | 約 3 ms    |
-| 極小な 6x10 ペントミノ問題の生成     | 約 12 ms   |
+| 処理                                 | 時間                       |
+| ------------------------------------ | -------------------------- |
+| 空の 9x9 数独の classify（上限2）    | 約 0.13 ms                 |
+| 極小な 9x9 数独の生成                | 約 6.5 ms                  |
+| 極小な 16x16 数独の生成              | 約 1.4 s                   |
+| 6x10 ペントミノ敷き詰めを1つ見つける | 約 3 ms                    |
+| 極小な 6x10 ペントミノ問題の生成     | 約 12 ms                   |
+| `hard` 指定の 9x9 数独の生成         | 中央値 約 0.3 s、最悪 数 s |
 
 生成コストは「手がかり数 × 上限付き探索1回のコスト」でほぼ決まります。その探索を安くするのはエンジンの仕事で、だからエンジンは自作ではなく依存にしています。
 
 ## ロードマップ
 
-- **v0.2：根拠付きの難易度。** 数独の人間向け手筋ソルバー（singles、hidden singles、pairs、…）を載せ、必要になった最も強い手筋で難易度を決め、使った手筋のログを返す。生成器は目標難易度を受け取れるようにする。
 - **遊べるデモ**（GitHub Pages、ブラウザ内で生成）。
 - **変換の追加**：N クイーン、カックロなど exact cover にきれいに落ちるもの。
 - **代替エンジン**（WebAssembly、worker）を `ExactCoverSolver` の裏に、必要になったら。
