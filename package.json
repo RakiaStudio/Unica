@@ -16,13 +16,13 @@
   ],
   "license": "MIT",
   "author": "RakiaStudio <contact@rakiastudio.com> (https://rakiastudio.com)",
-  "homepage": "https://github.com/RakiaStudio/unica#readme",
+  "homepage": "https://github.com/RakiaStudio/Unica#readme",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/RakiaStudio/unica.git"
+    "url": "git+https://github.com/RakiaStudio/Unica.git"
   },
   "bugs": {
-    "url": "https://github.com/RakiaStudio/unica/issues"
+    "url": "https://github.com/RakiaStudio/Unica/issues"
   },
   "type": "module",
   "sideEffects": false,
