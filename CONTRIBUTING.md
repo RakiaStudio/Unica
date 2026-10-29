@@ -3,8 +3,8 @@
 ## Setup
 
 ```sh
-git clone https://github.com/RakiaStudio/unica.git
-cd unica
+git clone https://github.com/RakiaStudio/Unica.git
+cd Unica
 npm ci
 npm run check   # lint + typecheck + test + build; this is what CI runs
 ```
