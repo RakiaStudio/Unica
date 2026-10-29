@@ -1,5 +1,11 @@
 # @rakiastudio/unica
 
+## 0.1.1
+
+### Patch Changes
+
+- 2b08821: Point the repository, homepage and issue links at `github.com/RakiaStudio/Unica`, matching the repository's actual name.
+
 ## 0.1.0
 
 ### Minor Changes
