@@ -6,7 +6,11 @@ name: Verify published package
 #
 # Called by release.yml after a publish, or run by hand for any version.
 # Two jobs with separate permissions: `verify` runs the package and can only
-# read; `notes` never runs package code and can only edit the GitHub release.
+# read; `notes` never runs package code and can only edit the GitHub release,
+# where it writes the outcome and a link to the run, nothing from the package.
+#
+# These checks are about the package's guarantees, not its safety. Registry
+# signatures and provenance are checked separately by `npm audit signatures`.
 
 on:
   workflow_call:
@@ -102,17 +106,20 @@ jobs:
       GH_TOKEN: ${{ github.token }}
       GH_REPO: ${{ github.repository }}
     steps:
-      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
-        continue-on-error: true
-        with:
-          name: verify-published
-          path: ${{ runner.temp }}/result
-      - name: Append to the release notes
+      # Only the job outcome and a link to the run go into the release notes.
+      # The script's output contains text the package controls (its version,
+      # check details), so it stays in the job summary and the artifact and is
+      # never copied into the public release body.
+      - name: Append the outcome to the release notes
         run: |
           if ! [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$ ]]; then
             echo "not a version: $VERSION" >&2
             exit 1
           fi
+          case "$OUTCOME" in
+            success | failure | cancelled) ;;
+            *) echo "unexpected outcome: $OUTCOME" >&2; exit 1 ;;
+          esac
           tag="v$VERSION"
           if ! gh release view "$tag" >/dev/null 2>&1; then
             echo "no GitHub release for $tag; the result stays in the job summary and artifact"
@@ -125,12 +132,9 @@ jobs:
           {
             echo
             echo '<!-- verify-published -->'
-            echo "### Verified from npm: $OUTCOME"
+            echo "### Guarantee checks on the npm package: $OUTCOME"
             echo
-            echo "Installed @rakiastudio/unica@$VERSION from the npm registry into an empty directory and checked it with \`scripts/verify-published.mjs\` (independent oracles). Run: $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
-            echo
-            echo '```'
-            cat "$RUNNER_TEMP/result/verify.txt" 2>/dev/null || echo "no output (the verify job failed before running the checks)"
-            echo '```'
+            echo "@rakiastudio/unica@$VERSION was installed from npm into an empty directory and checked with \`scripts/verify-published.mjs\`."
+            echo "Details: $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
           } >> "$notes"
           gh release edit "$tag" --notes-file "$notes"
