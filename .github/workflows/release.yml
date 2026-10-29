@@ -40,22 +40,30 @@ jobs:
     name: changesets
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: 22
-          cache: npm
           registry-url: https://registry.npmjs.org
+          # No dependency cache in the job that can publish: a cache written by
+          # another workflow run must not be able to change what gets built.
+          package-manager-cache: false
       # Trusted publishing needs npm CLI 11.5.1 or later; Node 22 ships npm 10.
-      - run: npm install -g npm@latest
-      - run: npm ci
+      # Pinned to an exact version because this job can publish.
+      - run: npm install -g npm@12.2.1
+      # Skip dependency install scripts in the job that can publish. The build
+      # and the test-suite do not need them (checked with
+      # `npm ci --ignore-scripts && npm run check`).
+      - run: npm ci --ignore-scripts
+      # v2 detects what was published from the Changesets output file rather
+      # than from stdout, so it pushes the git tag and creates the GitHub
+      # release; v1 did neither for 0.1.1. The token comes from `github-token`,
+      # which defaults to the workflow's GITHUB_TOKEN.
       - name: Create release PR or publish to npm
-        uses: changesets/action@v1
+        uses: changesets/action@ae32849d5ba541f9ae29e40e22a623bc13562f51 # v2.1.2
         with:
-          publish: npm run release
-          title: 'chore(release): version packages'
-          commit: 'chore(release): version packages'
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          publish-script: npm run release
+          pr-title: 'chore(release): version packages'
+          commit-message: 'chore(release): version packages'
