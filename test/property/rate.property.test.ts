@@ -1,0 +1,106 @@
+import fc from 'fast-check';
+import { describe, expect, it } from 'vitest';
+import { TECHNIQUES, sudoku, type Step } from '../../src/index.js';
+import {
+  applyStep,
+  fromValues,
+  geometry,
+  type CandidateGrid,
+} from '../../src/puzzles/sudoku/candidates.js';
+import { solveSudoku, textToGrid } from '../helpers/brute-force.js';
+
+/**
+ * Soundness of the techniques, checked against the answer from the
+ * independent oracle. At every state the rater passes through, every
+ * technique (not only the one the rater picked) is asked for a step, and that
+ * step must agree with the solution: placements put the right symbol in an
+ * empty cell, eliminations remove a symbol the solution does not have there.
+ */
+
+const seedArb = fc.oneof(fc.integer(), fc.string({ minLength: 1, maxLength: 16 }));
+
+let checkedSteps = 0;
+
+function expectSound(grid: CandidateGrid, step: Step, solution: readonly number[]): void {
+  const { n } = grid.geometry;
+  for (const { row, col, value } of step.placements) {
+    expect(grid.values[row * n + col], step.reason).toBe(0);
+    expect(solution[row * n + col], step.reason).toBe(value);
+  }
+  for (const { row, col, value } of step.eliminations) {
+    expect(solution[row * n + col], step.reason).not.toBe(value);
+  }
+  expect(step.placements.length + step.eliminations.length).toBeGreaterThan(0);
+  checkedSteps++;
+}
+
+/** Walk the rating, checking every technique at every state and the final grid. */
+function walk(boxRows: number, boxCols: number, text: string): void {
+  const s = sudoku({ boxRows, boxCols });
+  const n = boxRows * boxCols;
+  const answer = solveSudoku(textToGrid(text, n), boxRows, boxCols);
+  if (answer === undefined) throw new Error('generated puzzle has no solution');
+  const solution = answer.flat();
+  const rating = s.rate(text);
+  let grid = fromValues(geometry(boxRows, boxCols), s.toGrid(s.parse(text)).flat());
+  const states = [grid];
+  for (const step of rating.steps) {
+    grid = applyStep(grid, step);
+    states.push(grid);
+  }
+  for (const state of states) {
+    for (const technique of TECHNIQUES) {
+      const step = technique.find(state);
+      if (step !== undefined) expectSound(state, step, solution);
+    }
+  }
+  // Completeness: a solved rating ends on the oracle's answer.
+  if (rating.solved) expect(grid.values).toEqual(solution);
+}
+
+describe('rating: soundness against the oracle', () => {
+  it('on generated 9x9 puzzles', () => {
+    fc.assert(
+      fc.property(seedArb, (seed) => {
+        walk(3, 3, sudoku().generate({ seed }).text.puzzle);
+      }),
+      { numRuns: 100 },
+    );
+  });
+
+  it('on generated 9x9 puzzles that need medium techniques', () => {
+    const s = sudoku();
+    fc.assert(
+      fc.property(seedArb, (seed) => {
+        const puzzle = s.generate({ seed, difficulty: 'medium' });
+        walk(3, 3, puzzle.text.puzzle);
+        // Reproducible: the same seed walks the same attempts to the same puzzle.
+        expect(s.generate({ seed, difficulty: 'medium' })).toEqual(puzzle);
+      }),
+      { numRuns: 30 },
+    );
+  });
+
+  it('on 9x9 puzzles that need hard techniques', () => {
+    // Hard puzzles are rare (about 1 in 300), so a random seed could, very
+    // rarely, exhaust maxAttempts; fixed seeds keep this test deterministic.
+    const s = sudoku();
+    for (let i = 0; i < 8; i++) {
+      walk(3, 3, s.generate({ seed: `sound-hard-${String(i)}`, difficulty: 'hard' }).text.puzzle);
+    }
+  });
+
+  it('on generated 4x4 and 6x6 puzzles', () => {
+    fc.assert(
+      fc.property(seedArb, fc.constantFrom([2, 2], [2, 3], [3, 2]), (seed, [boxRows, boxCols]) => {
+        walk(boxRows, boxCols, sudoku({ boxRows, boxCols }).generate({ seed }).text.puzzle);
+      }),
+      { numRuns: 100 },
+    );
+  });
+
+  it('checked a meaningful number of steps', () => {
+    // Runs after the property tests above; guards against a walk that checks nothing.
+    expect(checkedSteps).toBeGreaterThan(1000);
+  });
+});

@@ -21,7 +21,15 @@ import {
 } from '../../core/exact-cover.js';
 import { generate, type GeneratedPuzzle, type GenerateOptions } from '../../core/generate.js';
 import { classify, type Classification } from '../../core/classify.js';
+import type { Seed } from '../../core/random.js';
 import type { ExactCoverSolver } from '../../core/solver.js';
+import { geometry } from './candidates.js';
+import { explainRating, rateValues, type Rating } from './rate.js';
+import type { Difficulty } from './techniques/index.js';
+
+export type { CellValue, Step, TechniqueName } from './candidates.js';
+export type { Rating } from './rate.js';
+export { DIFFICULTIES, TECHNIQUES, type Difficulty, type Technique } from './techniques/index.js';
 
 export interface SudokuPlacement {
   /** 0-based row. */
@@ -48,6 +56,28 @@ export interface SudokuGenerated extends GeneratedPuzzle {
   readonly clueCount: number;
 }
 
+export interface SudokuGenerateOptions extends GenerateOptions {
+  /**
+   * Keep generating until `rate` gives this difficulty. Attempt 1 uses `seed`;
+   * attempt k uses the seed `` `${seed}:${k}` ``. The same seed therefore gives
+   * the same puzzle, and the returned `seed` reproduces it directly.
+   */
+  readonly difficulty: Difficulty;
+  /**
+   * Give up after this many attempts with an `ExactCoverError`. Default 2000:
+   * about 1 in 300 generated 9x9 puzzles rates `hard`, so 2000 attempts find
+   * one with probability above 99.9%. The other levels take a few attempts.
+   */
+  readonly maxAttempts?: number;
+}
+
+export interface SudokuRatedPuzzle extends SudokuGenerated {
+  /** How many puzzles were generated to find this one. */
+  readonly attempts: number;
+  /** The rating that matched the requested difficulty. */
+  readonly rating: Rating;
+}
+
 export interface Sudoku {
   readonly n: number;
   readonly boxRows: number;
@@ -70,6 +100,16 @@ export interface Sudoku {
   classify(text: string, solver?: ExactCoverSolver): Classification;
   /** Generate a unique (and, by default, minimal) puzzle. */
   generate(options?: GenerateOptions): SudokuGenerated;
+  /** Generate a unique, minimal puzzle that rates at the requested difficulty. */
+  generate(options: SudokuGenerateOptions): SudokuRatedPuzzle;
+  /**
+   * Solve with human techniques, weakest first, and report the strongest one
+   * needed. Grids of at most 32 symbols. Assumes the puzzle has one solution
+   * (check with `classify`); otherwise the result is `beyond`.
+   */
+  rate(text: string): Rating;
+  /** The steps of `rate` as numbered sentences, followed by a one-line summary. */
+  explain(text: string): string[];
 }
 
 const SYMBOLS = '123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ';
@@ -169,6 +209,48 @@ export function sudoku(options: SudokuOptions = {}): Sudoku {
     return clues;
   };
 
+  const rate = (text: string): Rating => {
+    const shape = geometry(boxRows, boxCols);
+    return rateValues(shape, toGrid(parse(text)).flat());
+  };
+
+  const generateBasic = (options?: GenerateOptions): SudokuGenerated => {
+    const generated = generate(problem(), options);
+    return {
+      ...generated,
+      text: { puzzle: format(generated.clues), solution: format(generated.solution) },
+      clueCount: generated.clues.length,
+    };
+  };
+
+  function generateSudoku(options?: GenerateOptions): SudokuGenerated;
+  function generateSudoku(options: SudokuGenerateOptions): SudokuRatedPuzzle;
+  function generateSudoku(
+    options: GenerateOptions | SudokuGenerateOptions = {},
+  ): SudokuGenerated | SudokuRatedPuzzle {
+    if (!('difficulty' in options)) return generateBasic(options);
+    const { difficulty, maxAttempts = 2000, ...rest } = options;
+    if (!Number.isInteger(maxAttempts) || maxAttempts < 1) {
+      throw new ExactCoverError(
+        `maxAttempts must be a positive integer, got ${String(maxAttempts)}`,
+      );
+    }
+    // Attempt 1 settles the base seed (fresh when none was given); later
+    // attempts derive theirs from it, so the whole search is reproducible.
+    let base: Seed | undefined = rest.seed;
+    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+      const seed: Seed | undefined =
+        attempt === 1 || base === undefined ? base : `${String(base)}:${String(attempt)}`;
+      const puzzle = generateBasic(seed === undefined ? rest : { ...rest, seed });
+      base ??= puzzle.seed;
+      const rating = rate(puzzle.text.puzzle);
+      if (rating.difficulty === difficulty) return { ...puzzle, attempts: attempt, rating };
+    }
+    throw new ExactCoverError(
+      `no ${difficulty} puzzle in ${String(maxAttempts)} attempts from seed ${String(base)}`,
+    );
+  }
+
   return {
     n,
     boxRows,
@@ -186,13 +268,8 @@ export function sudoku(options: SudokuOptions = {}): Sudoku {
         ? format(result.solution)
         : undefined;
     },
-    generate(options) {
-      const generated = generate(problem(), options);
-      return {
-        ...generated,
-        text: { puzzle: format(generated.clues), solution: format(generated.solution) },
-        clueCount: generated.clues.length,
-      };
-    },
+    generate: generateSudoku,
+    rate,
+    explain: (text) => explainRating(rate(text)),
   };
 }

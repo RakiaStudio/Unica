@@ -110,3 +110,62 @@ export function isValidSudokuSolution(grid: number[][], boxRows: number, boxCols
   }
   return true;
 }
+
+/**
+ * The first solution of a sudoku grid found by the same backtracking search as
+ * `countSudokuSolutions`, or `undefined` when there is none. Does not mutate
+ * `grid`. Used to check rating steps against the answer.
+ */
+export function solveSudoku(
+  grid: number[][],
+  boxRows: number,
+  boxCols: number,
+): number[][] | undefined {
+  const n = boxRows * boxCols;
+  const work = grid.map((line) => [...line]);
+
+  const allowed = (r: number, c: number, v: number): boolean => {
+    for (let i = 0; i < n; i++) {
+      if (work[r]?.[i] === v) return false;
+      if (work[i]?.[c] === v) return false;
+    }
+    const r0 = Math.floor(r / boxRows) * boxRows;
+    const c0 = Math.floor(c / boxCols) * boxCols;
+    for (let dr = 0; dr < boxRows; dr++) {
+      for (let dc = 0; dc < boxCols; dc++) {
+        if (work[r0 + dr]?.[c0 + dc] === v) return false;
+      }
+    }
+    return true;
+  };
+
+  const search = (): boolean => {
+    let bestR = -1;
+    let bestC = -1;
+    let bestCandidates: number[] = [];
+    for (let r = 0; r < n; r++) {
+      for (let c = 0; c < n; c++) {
+        if (work[r]?.[c] !== 0) continue;
+        const candidates: number[] = [];
+        for (let v = 1; v <= n; v++) if (allowed(r, c, v)) candidates.push(v);
+        if (candidates.length === 0) return false;
+        if (bestR === -1 || candidates.length < bestCandidates.length) {
+          bestR = r;
+          bestC = c;
+          bestCandidates = candidates;
+        }
+      }
+    }
+    if (bestR === -1) return true;
+    const line = work[bestR];
+    if (line === undefined) return false;
+    for (const v of bestCandidates) {
+      line[bestC] = v;
+      if (search()) return true;
+    }
+    line[bestC] = 0;
+    return false;
+  };
+
+  return search() ? work : undefined;
+}
