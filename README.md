@@ -238,6 +238,14 @@ solver in `test/helpers/brute-force.ts` that shares no code with `src/`.
   choice; `permutation` is always a bijection.
 - **Coverage**: 98% statements. The uncovered lines are defensive
   branches for states the type system cannot rule out.
+- **The published package**: after every release, a workflow installs the new
+  version from npm into an empty directory, as a user would, checks its registry
+  signatures and provenance, and runs `scripts/verify-published.mjs`. That script
+  shares no code with `src/` or with the test-suite. Its own backtracking solvers
+  are first calibrated on known counts (288 complete 4x4 sudokus, 8 tilings of
+  the 3x20 rectangle), then confirm that generated puzzles are unique, minimal
+  and reproducible, and that the README examples print what this document says.
+  The result is added to the GitHub release.
 
 ```sh
 npm test            # vitest

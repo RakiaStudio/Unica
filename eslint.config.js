@@ -49,4 +49,18 @@ export default tseslint.config(
     files: ['eslint.config.js', 'vitest.config.ts'],
     ...tseslint.configs.disableTypeChecked,
   },
+  {
+    // Plain Node scripts outside the TypeScript project. verify-published.mjs
+    // runs against an installed copy of the package and reports to stdout.
+    files: ['scripts/**/*.mjs'],
+    ...tseslint.configs.disableTypeChecked,
+    languageOptions: {
+      ...tseslint.configs.disableTypeChecked.languageOptions,
+      globals: { console: 'readonly', process: 'readonly' },
+    },
+    rules: {
+      ...tseslint.configs.disableTypeChecked.rules,
+      'no-console': 'off',
+    },
+  },
 );

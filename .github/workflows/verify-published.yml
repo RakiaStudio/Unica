@@ -1,0 +1,136 @@
+name: Verify published package
+
+# Installs a published version of @rakiastudio/unica from npm into an empty
+# directory, the way a user gets it, and checks its guarantees with
+# scripts/verify-published.mjs (independent oracles; no code from src/).
+#
+# Called by release.yml after a publish, or run by hand for any version.
+# Two jobs with separate permissions: `verify` runs the package and can only
+# read; `notes` never runs package code and can only edit the GitHub release.
+
+on:
+  workflow_call:
+    inputs:
+      version:
+        description: Version to verify, e.g. 0.1.2
+        required: true
+        type: string
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Version to verify, e.g. 0.1.1
+        required: true
+        type: string
+
+permissions: {}
+
+jobs:
+  verify:
+    name: verify @rakiastudio/unica@${{ inputs.version }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    env:
+      VERSION: ${{ inputs.version }}
+    steps:
+      - name: Check the version input
+        run: |
+          if ! [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$ ]]; then
+            echo "not a version: $VERSION" >&2
+            exit 1
+          fi
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          sparse-checkout: scripts/verify-published.mjs
+          sparse-checkout-cone-mode: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 22
+          package-manager-cache: false
+      # A new version can take a few minutes to appear (0.1.1 took about three).
+      - name: Wait for the version on npm
+        run: |
+          for attempt in $(seq 1 45); do
+            if npm view "@rakiastudio/unica@$VERSION" version >/dev/null 2>&1; then
+              exit 0
+            fi
+            sleep 20
+          done
+          echo "@rakiastudio/unica@$VERSION did not appear on npm within 15 minutes" >&2
+          exit 1
+      - name: Install from npm into an empty directory
+        run: |
+          mkdir "$RUNNER_TEMP/consumer"
+          cd "$RUNNER_TEMP/consumer"
+          npm init -y >/dev/null
+          npm install --ignore-scripts --no-audit --no-fund "@rakiastudio/unica@$VERSION"
+          npm audit signatures
+          cp "$GITHUB_WORKSPACE/scripts/verify-published.mjs" .
+      - name: Verify
+        run: |
+          cd "$RUNNER_TEMP/consumer"
+          set -o pipefail
+          EXPECT_VERSION="$VERSION" node verify-published.mjs | tee "$RUNNER_TEMP/verify.txt"
+      - name: Job summary
+        if: ${{ !cancelled() }}
+        run: |
+          {
+            echo "### Verification of @rakiastudio/unica@$VERSION from npm"
+            echo
+            echo '```'
+            cat "$RUNNER_TEMP/verify.txt" 2>/dev/null || echo "no output (an earlier step failed)"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: ${{ !cancelled() }}
+        with:
+          name: verify-published
+          path: ${{ runner.temp }}/verify.txt
+          if-no-files-found: ignore
+
+  notes:
+    name: add the result to the GitHub release
+    needs: verify
+    if: ${{ !cancelled() && needs.verify.result != 'skipped' }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    env:
+      VERSION: ${{ inputs.version }}
+      OUTCOME: ${{ needs.verify.result }}
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+    steps:
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        continue-on-error: true
+        with:
+          name: verify-published
+          path: ${{ runner.temp }}/result
+      - name: Append to the release notes
+        run: |
+          if ! [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$ ]]; then
+            echo "not a version: $VERSION" >&2
+            exit 1
+          fi
+          tag="v$VERSION"
+          if ! gh release view "$tag" >/dev/null 2>&1; then
+            echo "no GitHub release for $tag; the result stays in the job summary and artifact"
+            exit 0
+          fi
+          notes="$RUNNER_TEMP/notes.md"
+          # Drop an earlier result section so a re-run replaces it.
+          gh release view "$tag" --json body --jq .body \
+            | sed '/^<!-- verify-published -->$/,$d' > "$notes"
+          {
+            echo
+            echo '<!-- verify-published -->'
+            echo "### Verified from npm: $OUTCOME"
+            echo
+            echo "Installed @rakiastudio/unica@$VERSION from the npm registry into an empty directory and checked it with \`scripts/verify-published.mjs\` (independent oracles). Run: $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
+            echo
+            echo '```'
+            cat "$RUNNER_TEMP/result/verify.txt" 2>/dev/null || echo "no output (the verify job failed before running the checks)"
+            echo '```'
+          } >> "$notes"
+          gh release edit "$tag" --notes-file "$notes"
