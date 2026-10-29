@@ -49,8 +49,11 @@ Node 22 is used for development (`.nvmrc`); the package supports Node 20+.
   "Include administrators". The version PR is opened with `GITHUB_TOKEN`, which
   does not trigger CI, so an administrator merges it; `prepublishOnly` runs the
   full check before anything is published.
-- Secret `NPM_TOKEN`: an npm granular access token with read and write on the
-  `@rakiastudio` scope.
+- npm trusted publishing, configured on npmjs.com rather than in this
+  repository: the `@rakiastudio/unica` package settings list a Trusted Publisher
+  for GitHub Actions with organization `RakiaStudio`, repository `Unica` and
+  workflow `release.yml`, allowed to run `npm publish`. No npm token or
+  `NPM_TOKEN` secret is used.
 
 ## Commits and releases
 
