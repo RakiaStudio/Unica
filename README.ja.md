@@ -1,6 +1,6 @@
 # @rakiastudio/unica
 
-[![CI](https://github.com/RakiaStudio/unica/actions/workflows/ci.yml/badge.svg)](https://github.com/RakiaStudio/unica/actions/workflows/ci.yml)
+[![CI](https://github.com/RakiaStudio/Unica/actions/workflows/ci.yml/badge.svg)](https://github.com/RakiaStudio/Unica/actions/workflows/ci.yml)
 [![npm](https://img.shields.io/npm/v/%40rakiastudio%2Funica)](https://www.npmjs.com/package/@rakiastudio/unica)
 [![license](https://img.shields.io/npm/l/%40rakiastudio%2Funica)](./LICENSE)
 
