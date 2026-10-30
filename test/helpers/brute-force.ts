@@ -2,9 +2,9 @@
  * Independent oracles used by the test-suite.
  *
  * These deliberately share no code with `src/`. When a property test says a
- * generated sudoku is unique, that verdict comes from this plain backtracking
- * search, not from the dancing-links engine that produced the puzzle. The
- * engine is not allowed to grade its own homework.
+ * generated sudoku or pentomino puzzle is unique, that verdict comes from a
+ * plain backtracking search here, not from the dancing-links engine that
+ * produced the puzzle. The engine is not allowed to grade its own homework.
  */
 
 /**
@@ -168,4 +168,154 @@ export function solveSudoku(
   };
 
   return search() ? work : undefined;
+}
+
+/**
+ * The twelve pentominoes, drawn here rather than imported, so that a wrong
+ * shape in `src/` cannot hide behind the same wrong shape in the oracle.
+ */
+const PENTOMINO_PICTURES: Readonly<Record<string, readonly string[]>> = {
+  F: ['.##', '##.', '.#.'],
+  I: ['#####'],
+  L: ['####', '#...'],
+  N: ['###.', '..##'],
+  P: ['###', '##.'],
+  T: ['###', '.#.', '.#.'],
+  U: ['#.#', '###'],
+  V: ['#..', '#..', '###'],
+  W: ['#..', '##.', '.##'],
+  X: ['.#.', '###', '.#.'],
+  Y: ['####', '.#..'],
+  Z: ['##.', '.#.', '.##'],
+};
+
+type Cells = [number, number][];
+
+/** Every distinct rotation and reflection of a shape, each as `[row, col]` cells sorted column by column. */
+function orientations(picture: readonly string[]): Cells[] {
+  let cells: Cells = [];
+  picture.forEach((line, r) => {
+    Array.from(line).forEach((ch, c) => {
+      if (ch === '#') cells.push([r, c]);
+    });
+  });
+  const seen = new Map<string, Cells>();
+  for (let flip = 0; flip < 2; flip++) {
+    for (let turn = 0; turn < 4; turn++) {
+      const rows = Math.min(...cells.map(([r]) => r));
+      const cols = Math.min(...cells.map(([, c]) => c));
+      const shifted: Cells = cells
+        .map(([r, c]): [number, number] => [r - rows, c - cols])
+        .sort((a, b) => a[1] - b[1] || a[0] - b[0]);
+      seen.set(JSON.stringify(shifted), shifted);
+      cells = cells.map(([r, c]): [number, number] => [c, -r]);
+    }
+    cells = cells.map(([r, c]): [number, number] => [r, -c]);
+  }
+  return [...seen.values()];
+}
+
+/** All fixed pentominoes by name; 63 in total. */
+export function pentominoOrientations(): Map<string, Cells[]> {
+  return new Map(
+    Object.entries(PENTOMINO_PICTURES).map(([name, picture]) => [name, orientations(picture)]),
+  );
+}
+
+/**
+ * Count the ways to finish a pentomino tiling given in the text notation of
+ * `polyominoTiling().format`: one line per row, a piece letter for a clue cell,
+ * `.` for an empty cell. Every pentomino is used exactly once; the pieces that
+ * already appear stay where they are. Stops at `limit`.
+ */
+export function countPentominoTilings(text: string, limit = 2): number {
+  const board = text
+    .trim()
+    .split('\n')
+    .map((line) => Array.from(line));
+  const height = board.length;
+  const width = board[0]?.length ?? 0;
+  const pieces = pentominoOrientations();
+  const unused = new Set(pieces.keys());
+  for (const line of board) for (const ch of line) if (ch !== '.') unused.delete(ch);
+  let count = 0;
+
+  const empty = (r: number, c: number): boolean => board[r]?.[c] === '.';
+
+  // A region of empty cells whose size is not a multiple of 5 can never be
+  // filled; checking this after each placement keeps the search small.
+  const fillable = (): boolean => {
+    const seen = new Set<number>();
+    for (let r = 0; r < height; r++) {
+      for (let c = 0; c < width; c++) {
+        if (!empty(r, c) || seen.has(r * width + c)) continue;
+        let size = 0;
+        const stack: [number, number][] = [[r, c]];
+        seen.add(r * width + c);
+        for (let next = stack.pop(); next !== undefined; next = stack.pop()) {
+          size++;
+          const [y, x] = next;
+          for (const [ny, nx] of [
+            [y - 1, x],
+            [y + 1, x],
+            [y, x - 1],
+            [y, x + 1],
+          ] satisfies [number, number][]) {
+            if (nx < 0 || nx >= width || !empty(ny, nx) || seen.has(ny * width + nx)) continue;
+            seen.add(ny * width + nx);
+            stack.push([ny, nx]);
+          }
+        }
+        if (size % 5 !== 0) return false;
+      }
+    }
+    return true;
+  };
+
+  // Fill the first empty cell, column by column from the left, with each
+  // unused piece in each orientation whose first cell lands on it.
+  const search = (): void => {
+    if (count >= limit) return;
+    let row = -1;
+    let col = -1;
+    for (let c = 0; c < width && row < 0; c++) {
+      for (let r = 0; r < height; r++) {
+        if (empty(r, c)) {
+          row = r;
+          col = c;
+          break;
+        }
+      }
+    }
+    if (row < 0) {
+      if (unused.size === 0) count++;
+      return;
+    }
+    for (const name of [...unused]) {
+      for (const shape of pieces.get(name) ?? []) {
+        const [first] = shape;
+        if (first === undefined) continue;
+        const placed: [number, number][] = shape.map(([r, c]) => [
+          row + r - first[0],
+          col + c - first[1],
+        ]);
+        if (!placed.every(([r, c]) => empty(r, c))) continue;
+        for (const [r, c] of placed) {
+          const line = board[r];
+          if (line !== undefined) line[c] = name;
+        }
+        unused.delete(name);
+        if (fillable()) search();
+        unused.add(name);
+        for (const [r, c] of placed) {
+          const line = board[r];
+          if (line !== undefined) line[c] = '.';
+        }
+        if (count >= limit) return;
+      }
+    }
+  };
+
+  if (fillable()) search();
+  return count;
 }

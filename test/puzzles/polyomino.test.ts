@@ -6,11 +6,31 @@ import {
   classify,
   distinctOrientations,
   isMinimal,
-  isUnique,
   polyominoTiling,
 } from '../../src/index.js';
+import { countPentominoTilings, pentominoOrientations } from '../helpers/brute-force.js';
 
 const solver = new DancingLinksSolver();
+
+describe('pentomino oracle', () => {
+  // Calibrated on counts known independently of this package, so a verdict of
+  // "one tiling" below means something.
+  it('draws the 63 fixed pentominoes', () => {
+    const total = [...pentominoOrientations().values()].reduce((sum, list) => sum + list.length, 0);
+    expect(total).toBe(63);
+  });
+
+  it('finds the 8 tilings of the empty 3x20 rectangle', () => {
+    expect(countPentominoTilings(Array(3).fill('.'.repeat(20)).join('\n'), 100)).toBe(8);
+  });
+
+  it('accepts a full tiling as its own only completion', () => {
+    const solution = polyominoTiling({ width: 20, height: 3, pieces: PENTOMINOES }).generate({
+      seed: 'tsugia',
+    }).text.solution;
+    expect(countPentominoTilings(solution)).toBe(1);
+  });
+});
 
 describe('distinctOrientations', () => {
   it('counts the 63 fixed pentominoes', () => {
@@ -164,7 +184,7 @@ describe('polyominoTiling()', () => {
     const puzzle = tiling.generate({ seed: 'tsugia' });
     expect(puzzle.minimal).toBe(true);
     expect(puzzle.clues.length).toBeLessThan(12);
-    expect(isUnique(tiling.problem(), puzzle.clues)).toBe(true);
+    expect(countPentominoTilings(puzzle.text.puzzle)).toBe(1);
     expect(isMinimal(tiling.problem(), puzzle.clues)).toBe(true);
     expect(puzzle.text.solution).not.toContain('.');
     expect(puzzle.text.puzzle).toContain('.');

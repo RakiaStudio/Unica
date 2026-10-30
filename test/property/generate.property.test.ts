@@ -6,13 +6,17 @@ import {
   createRng,
   generate,
   isMinimal,
-  isUnique,
   permutation,
   polyominoTiling,
   sudoku,
   type ExactCoverProblem,
 } from '../../src/index.js';
-import { countSudokuSolutions, isValidSudokuSolution, textToGrid } from '../helpers/brute-force.js';
+import {
+  countPentominoTilings,
+  countSudokuSolutions,
+  isValidSudokuSolution,
+  textToGrid,
+} from '../helpers/brute-force.js';
 
 /**
  * The guarantees the library sells, stated as properties and checked against
@@ -70,7 +74,7 @@ describe('generate: properties', () => {
     fc.assert(
       fc.property(seedArb, (seed) => {
         const puzzle = tiling.generate({ seed });
-        expect(isUnique(tiling.problem(), puzzle.clues)).toBe(true);
+        expect(countPentominoTilings(puzzle.text.puzzle)).toBe(1);
         expect(isMinimal(tiling.problem(), puzzle.clues)).toBe(true);
       }),
       { numRuns: 20 },
