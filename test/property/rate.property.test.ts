@@ -81,14 +81,15 @@ describe('rating: soundness against the oracle', () => {
     );
   });
 
-  it('on 9x9 puzzles that need hard techniques', () => {
-    // Hard puzzles are rare (about 1 in 300), so a random seed could, very
-    // rarely, exhaust maxAttempts; fixed seeds keep this test deterministic.
-    const s = sudoku();
-    for (let i = 0; i < 8; i++) {
-      walk(3, 3, s.generate({ seed: `sound-hard-${String(i)}`, difficulty: 'hard' }).text.puzzle);
-    }
-  });
+  // Hard puzzles are rare (about 1 in 300), so a random seed could, very
+  // rarely, exhaust maxAttempts; fixed seeds keep these deterministic. One test
+  // per seed keeps each synchronous stretch short enough for the test runner.
+  for (let i = 0; i < 8; i++) {
+    const seed = `sound-hard-${String(i)}`;
+    it(`on a 9x9 puzzle that needs hard techniques (${seed})`, () => {
+      walk(3, 3, sudoku().generate({ seed, difficulty: 'hard' }).text.puzzle);
+    });
+  }
 
   it('on generated 4x4 and 6x6 puzzles', () => {
     fc.assert(
