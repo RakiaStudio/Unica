@@ -42,6 +42,10 @@
       "types": "./dist/puzzles/polyomino/index.d.ts",
       "import": "./dist/puzzles/polyomino/index.js"
     },
+    "./queens": {
+      "types": "./dist/puzzles/queens/index.d.ts",
+      "import": "./dist/puzzles/queens/index.js"
+    },
     "./package.json": "./package.json"
   },
   "main": "./dist/index.js",

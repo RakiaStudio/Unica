@@ -38,3 +38,4 @@ export { createRng, permutation } from './core/random.js';
 
 export * from './puzzles/sudoku/index.js';
 export * from './puzzles/polyomino/index.js';
+export * from './puzzles/queens/index.js';

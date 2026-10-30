@@ -143,6 +143,36 @@ console.log(puzzle.text.solution); // 完成させる唯一の方法
 //  ILLLLYYYYP
 ```
 
+### N クイーン
+
+```ts
+import { queens } from '@rakiastudio/unica';
+
+const board = queens({ n: 8 });
+const puzzle = board.generate({ seed: 42 });
+
+console.log(puzzle.text.puzzle); // 置かれたクイーンが3つ、残りの5つをプレイヤーが置く
+//  ....Q...
+//  ........
+//  ........
+//  ........
+//  ........
+//  .Q......
+//  .....Q..
+//  ........
+console.log(puzzle.text.solution); // 完成させる唯一の方法
+//  ....Q...
+//  .......Q
+//  ...Q....
+//  Q.......
+//  ......Q.
+//  .Q......
+//  .....Q..
+//  ..Q.....
+```
+
+行と列は主列（それぞれちょうど1つのクイーン）、斜めの線は副列（それぞれ多くても1つのクイーン）です。`board.solve(text)` は唯一の完成形を返し、無い・複数ならば `undefined` を返します。
+
 ### 自作のパズル
 
 exact cover として書けるものは、そのまま `generate` に渡せます。
@@ -197,6 +227,7 @@ flowchart LR
   subgraph puzzles["puzzles/*（変換）"]
     S[sudoku] --> P
     T[polyominoTiling] --> P
+    Q[queens] --> P
     U[自作パズル] --> P
   end
   P[ExactCoverProblem + 手がかり]
@@ -217,6 +248,7 @@ flowchart LR
 | `core/random.ts`      | シード付き乱数と順列                                                      |
 | `puzzles/sudoku`      | 任意のボックス形の数独 → exact cover、テキスト記法、`generate`/`solve`    |
 | `puzzles/polyomino`   | 穴と対称性オプション付きのポリオミノ詰め → exact cover、12種のペントミノ  |
+| `puzzles/queens`      | N クイーン → exact cover（斜めの線は副列）、テキスト記法                  |
 
 自明でなかった設計判断は [`docs/adr`](./docs/adr) に ADR として残しています。
 
@@ -236,6 +268,7 @@ flowchart LR
 | `createRng(seed)`、`permutation(n, rng)` | 決定的な乱数                                                               |
 | `sudoku(options?)`                       | 変換、`parse`/`format`、`generate`、`solve`、`classify`、`rate`、`explain` |
 | `polyominoTiling(options)`               | 変換、`orientations`、`format`、`generate`                                 |
+| `queens(options?)`                       | 変換、`parse`/`format`、`generate`、`solve`                                |
 
 `GenerateOptions`：`seed`、`solver`、`solution`（既知の解から始める。exact cover になっていない解は `ExactCoverError`）、`stopAtClues`（削減を途中で止める。結果は唯一解だが極小とは限らず、`minimal` がそれを示す）。
 
@@ -243,10 +276,10 @@ flowchart LR
 
 ## テスト
 
-エンジンに自分の答案の採点はさせません。生成した問題（数独とペントミノ）について「唯一解である」とテストが主張するときは、`src/` とコードを一切共有しない `test/helpers/brute-force.ts` の独立したバックトラック探索が検証します。ペントミノの oracle は12種の形を自前で持ち、まず 63 通りの向きと 3x20 の長方形の 8 通りの敷き詰めで確かめてから使います。
+エンジンに自分の答案の採点はさせません。生成した問題（数独、ペントミノ、N クイーン）について「唯一解である」とテストが主張するときは、`src/` とコードを一切共有しない `test/helpers/brute-force.ts` の独立したバックトラック探索が検証します。ペントミノの oracle は12種の形を自前で持ち、まず 63 通りの向きと 3x20 の長方形の 8 通りの敷き詰めで、N クイーンの oracle は n = 1〜8 の既知の解の数で確かめてから使います。
 
-- **答えの分かっている fixture**：Knuth の例題（被覆は `{B, D, F}` の1通り）、17手がかりの数独（17 は唯一解に必要な手がかり数の証明済み最小値、McGuire・Tugemann・Civario、2012）、63種の固定ペントミノ、3x20 の長方形の8通りの敷き詰め（対称を除いて2通り、×4）。
-- **プロパティテスト**（`fast-check`）：ランダムなシードに対して、生成した数独（4x4、9x9）と 3x20 のペントミノ問題がすべて oracle で唯一解かつ `isMinimal` で極小であること、`generate` の出力が削減の不動点であること、独立な二択の積では各選択につきちょうど1つの手がかりが残ること、`permutation` が常に全単射であること。
+- **答えの分かっている fixture**：Knuth の例題（被覆は `{B, D, F}` の1通り）、17手がかりの数独（17 は唯一解に必要な手がかり数の証明済み最小値、McGuire・Tugemann・Civario、2012）、63種の固定ペントミノ、3x20 の長方形の8通りの敷き詰め（対称を除いて2通り、×4）、n = 1〜8 の N クイーンの解の数（1、0、0、2、10、4、40、92）。
+- **プロパティテスト**（`fast-check`）：ランダムなシードに対して、生成した数独（4x4、9x9）、3x20 のペントミノ問題、N クイーンの問題（n = 5、6、8、10）がすべて oracle で唯一解かつ `isMinimal` で極小であること、`generate` の出力が削減の不動点であること、独立な二択の積では各選択につきちょうど1つの手がかりが残ること、`permutation` が常に全単射であること。
 - **数独の手筋の健全性**（`fast-check`）：生成した 4x4、6x6、9x9 の問題（`medium`、`hard`、`expert`、`master` を指定して生成したものを含む）について、格付けが通るすべての局面ですべての手筋に手順を求め、その配置と候補の削除をすべて oracle の解と照合します。解き切った格付けは、その解で終わらなければなりません。各手筋には手作りの候補盤による単体テストもあります。
 - **版をまたいだ再現性**：公開された 0.2.0 が `generate({ seed, difficulty })` に対して返した問題、試行回数、格付け、`explain` の出力を fixture にし、今の版が同じものを返すことを確かめます。
 - **カバレッジ**：文 99.23%、分岐 97.6%、関数 100%（0.5.0 時点。文は 95% 以上を保つ方針）。未到達行は型で排除できない状態に対する防御分岐です。
@@ -278,7 +311,7 @@ npm run check       # lint + typecheck + test + build。CI と同じ
 ## ロードマップ
 
 - **遊べるデモ**（GitHub Pages、ブラウザ内で生成）。
-- **変換の追加**：N クイーンなど exact cover にきれいに落ちるものと、カックロのように一工夫いるもの（交わる2本で数字をそろえる）。
+- **変換の追加**：exact cover にきれいに落ちるほかのパズルと、カックロのように一工夫いるもの（交わる2本で数字をそろえる）。
 - **代替エンジン**（WebAssembly、worker）を `ExactCoverSolver` の裏に、必要になったら。
 
 ## 貢献

@@ -197,6 +197,38 @@ console.log(puzzle.text.solution); // the only way to finish it
 //  ILLLLYYYYP
 ```
 
+### N queens
+
+```ts
+import { queens } from '@rakiastudio/unica';
+
+const board = queens({ n: 8 });
+const puzzle = board.generate({ seed: 42 });
+
+console.log(puzzle.text.puzzle); // three queens placed; place the other five
+//  ....Q...
+//  ........
+//  ........
+//  ........
+//  ........
+//  .Q......
+//  .....Q..
+//  ........
+console.log(puzzle.text.solution); // the only way to finish it
+//  ....Q...
+//  .......Q
+//  ...Q....
+//  Q.......
+//  ......Q.
+//  .Q......
+//  .....Q..
+//  ..Q.....
+```
+
+Rows and columns are primary columns (exactly one queen each); the diagonals
+are secondary columns (at most one queen each). `board.solve(text)` returns the
+only completion, or `undefined` when there is none or several.
+
 ### Your own puzzle
 
 Anything you can phrase as exact cover works unchanged with `generate`:
@@ -269,6 +301,7 @@ flowchart LR
   subgraph puzzles["puzzles/* (reductions)"]
     S[sudoku] --> P
     T[polyominoTiling] --> P
+    Q[queens] --> P
     U[your puzzle] --> P
   end
   P[ExactCoverProblem + clues]
@@ -289,6 +322,7 @@ flowchart LR
 | `core/random.ts`      | Seeded PRNG and permutations                                                           |
 | `puzzles/sudoku`      | Sudoku of any box shape → exact cover; text notation; convenience `generate`/`solve`   |
 | `puzzles/polyomino`   | Polyomino tiling with holes and symmetry options → exact cover; the twelve pentominoes |
+| `puzzles/queens`      | N queens → exact cover, with the diagonals as secondary columns; text notation         |
 
 Design decisions that were not obvious are recorded as ADRs in
 [`docs/adr`](./docs/adr).
@@ -309,6 +343,7 @@ The core API is small on purpose.
 | `createRng(seed)`, `permutation(n, rng)` | deterministic randomness                                                        |
 | `sudoku(options?)`                       | reduction, `parse`/`format`, `generate`, `solve`, `classify`, `rate`, `explain` |
 | `polyominoTiling(options)`               | reduction, `orientations`, `format`, `generate`                                 |
+| `queens(options?)`                       | reduction, `parse`/`format`, `generate`, `solve`                                |
 
 `GenerateOptions`: `seed`, `solver`, `solution` (start from a known solution; one
 that is not an exact cover is rejected with `ExactCoverError`),
@@ -321,18 +356,21 @@ All types are exported. `tsconfig` is `strict` with `noUncheckedIndexedAccess` a
 ## Testing
 
 The engine is not allowed to grade its own homework. Every uniqueness claim made
-by a test about a _generated_ puzzle (sudoku or pentomino) is verified by an
+by a test about a _generated_ puzzle (sudoku, pentomino or N queens) is verified by an
 independent backtracking solver in `test/helpers/brute-force.ts` that shares no
 code with `src/`. The pentomino oracle draws its own twelve shapes and is first
-checked on the 63 fixed pentominoes and the 8 tilings of the 3x20 rectangle.
+checked on the 63 fixed pentominoes and the 8 tilings of the 3x20 rectangle;
+the N-queens oracle is checked on the known solution counts for n = 1 to 8.
 
 - **Fixtures with known answers**: Knuth's worked example (one cover, `{B, D, F}`),
   a 17-clue sudoku (17 being the proven minimum, McGuire, Tugemann and Civario,
-  2012), the 63 fixed pentominoes, and the 8 tilings of the 3x20 rectangle
-  (2 up to symmetry, times 4).
+  2012), the 63 fixed pentominoes, the 8 tilings of the 3x20 rectangle
+  (2 up to symmetry, times 4), and the N-queens counts for n = 1 to 8 (1, 0, 0,
+  2, 10, 4, 40, 92).
 - **Property tests** (`fast-check`): over random seeds, every generated sudoku
-  (4x4 and 9x9) and every generated 3x20 pentomino puzzle is unique by the oracle
-  and minimal by `isMinimal`; `generate` is a fixed point under reduction; on a
+  (4x4 and 9x9), every generated 3x20 pentomino puzzle and every generated
+  N-queens puzzle (n = 5, 6, 8, 10) is unique by the oracle and minimal by
+  `isMinimal`; `generate` is a fixed point under reduction; on a
   product of independent binary choices the generator keeps exactly one clue per
   choice; `permutation` is always a bijection.
 - **Soundness of the sudoku techniques** (`fast-check`): over generated 4x4, 6x6
@@ -394,9 +432,8 @@ engine is a dependency and not a rewrite.
 ## Roadmap
 
 - **Playable demo** on GitHub Pages, generating in the browser.
-- **More reductions**: N-queens and other puzzles with a clean exact cover
-  formulation, and ones like kakuro that need extra work to keep crossing sums
-  consistent.
+- **More reductions**: other puzzles with a clean exact cover formulation, and
+  ones like kakuro that need extra work to keep crossing sums consistent.
 - **Alternative engines** behind `ExactCoverSolver` (WebAssembly, workers) once a
   workload needs them.
 
