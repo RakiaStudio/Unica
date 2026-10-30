@@ -145,6 +145,32 @@ Hard puzzles are rare (about 1 in 300 minimal 9x9 puzzles), so:
 
 Rating supports grids of up to 32 symbols.
 
+#### Explanations in other languages, and the data behind them
+
+Every step also carries what it was based on as data, `step.detail` (the
+pattern, the row, column or box, the cells and the values), so an app can
+present it however it likes. `explain` builds its sentences from that data in
+English by default, or in Japanese:
+
+```ts
+s.explain(puzzle.text.puzzle, { locale: 'ja' });
+// [ '1. 残り1つ：1行3列 に入るのは 8 だけ',
+//   '2. ここだけ：2行目で 6 が入るのは 2行2列 だけ',
+//   ...
+//   '解けました：難易度は「ふつう」、最も強い手筋は「候補の組（2つ）」です。' ]
+```
+
+For any other language, pass your own `Locale` object (`technique`,
+`difficulty`, `reason`, `summary`, `line`); see `english` and `japanese` in
+`src/puzzles/sudoku/locales.ts` for complete examples. `step.reason` stays the
+English sentence ([ADR-0004](./docs/adr/0004-explanations-from-step-data.md)).
+
+A rating also counts what it used: `rating.uses` per technique and
+`rating.levels` per level. `compareRatings(a, b)` orders two ratings without
+weights: by difficulty, then by how many steps needed the hardest level, then by
+how many steps needed anything above `easy`. Use it to tell apart puzzles of the
+same difficulty.
+
 ### Polyomino tiling
 
 ```ts
