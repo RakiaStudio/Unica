@@ -53,11 +53,99 @@ export interface CandidateGrid {
 /** A placement or an elimination, in the same shape the rest of the sudoku API uses. */
 export type CellValue = SudokuPlacement;
 
-/** One deduction: what a technique found, and why, in one sentence. */
+/** A cell, 0-based, in the same shape as a placement without its value. */
+export interface CellRef {
+  readonly row: number;
+  readonly col: number;
+}
+
+/** A row, column or box, 0-based. Boxes are numbered left to right, top to bottom. */
+export interface UnitRef {
+  readonly kind: UnitKind;
+  readonly index: number;
+}
+
+/** A cell together with the candidates it had when the step was found. */
+export interface CellCandidates {
+  readonly cell: CellRef;
+  readonly values: readonly number[];
+}
+
+/**
+ * What a step was based on, as data, so that it can be explained in any
+ * language. `pattern` tells the shapes apart; the technique name on the step
+ * says which variant (for example pair, triple or quad) it was.
+ */
+export type StepDetail =
+  | { readonly pattern: 'naked single'; readonly cell: CellRef; readonly value: number }
+  | {
+      readonly pattern: 'hidden single';
+      readonly unit: UnitRef;
+      readonly cell: CellRef;
+      readonly value: number;
+    }
+  | {
+      /** These cells hold only these values between them. */
+      readonly pattern: 'naked subset';
+      readonly unit: UnitRef;
+      readonly cells: readonly CellRef[];
+      readonly values: readonly number[];
+    }
+  | {
+      /** These values can only go in these cells. */
+      readonly pattern: 'hidden subset';
+      readonly unit: UnitRef;
+      readonly cells: readonly CellRef[];
+      readonly values: readonly number[];
+    }
+  | {
+      /** In `box`, `value` is confined to `line`. */
+      readonly pattern: 'pointing';
+      readonly box: UnitRef;
+      readonly line: UnitRef;
+      readonly value: number;
+    }
+  | {
+      /** In `line`, `value` is confined to `box`. */
+      readonly pattern: 'claiming';
+      readonly line: UnitRef;
+      readonly box: UnitRef;
+      readonly value: number;
+    }
+  | {
+      /** In `bases`, `value` can only go in `covers`. */
+      readonly pattern: 'fish';
+      readonly value: number;
+      readonly bases: readonly UnitRef[];
+      readonly covers: readonly UnitRef[];
+    }
+  | {
+      /**
+       * In each of `links`, `value` has two places; one end of each sees the
+       * other in `via`, so one of `ends` holds `value`.
+       */
+      readonly pattern: 'linked pairs';
+      readonly value: number;
+      readonly links: readonly [UnitRef, UnitRef];
+      readonly via: UnitRef;
+      readonly ends: readonly [CellRef, CellRef];
+    }
+  | {
+      /** One of the pincers (or, for xyz-wing, of all three cells) holds `value`. */
+      readonly pattern: 'wing';
+      readonly value: number;
+      readonly pivot: CellCandidates;
+      readonly pincers: readonly [CellCandidates, CellCandidates];
+    };
+
+/** One deduction: what a technique found, what it was based on, and why, in one sentence. */
 export interface Step {
   readonly technique: TechniqueName;
   readonly placements: readonly CellValue[];
   readonly eliminations: readonly CellValue[];
+  /** What the step was based on. `explain` builds its sentences from this. */
+  readonly detail: StepDetail;
+  /** The reason in English, the same text `explain` gives by default. */
   readonly reason: string;
 }
 
@@ -248,16 +336,6 @@ export function isConsistent(grid: CandidateGrid): boolean {
   });
 }
 
-/** `r3c5`: 1-based row and column, the usual notation in solving guides. */
-export function cellName(n: number, cell: number): string {
-  return `r${String(Math.floor(cell / n) + 1)}c${String((cell % n) + 1)}`;
-}
-
-/** `row 3`, `column 5`, `box 2`: 1-based. */
-export function unitName(unit: Unit): string {
-  return `${unit.kind} ${String(unit.index + 1)}`;
-}
-
 const SYMBOLS = '123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ';
 
 export function symbol(value: number): string {
@@ -266,4 +344,12 @@ export function symbol(value: number): string {
 
 export function cellValue(n: number, cell: number, value: number): CellValue {
   return { row: Math.floor(cell / n), col: cell % n, value };
+}
+
+export function cellRef(n: number, cell: number): CellRef {
+  return { row: Math.floor(cell / n), col: cell % n };
+}
+
+export function unitRef(unit: Unit): UnitRef {
+  return { kind: unit.kind, index: unit.index };
 }

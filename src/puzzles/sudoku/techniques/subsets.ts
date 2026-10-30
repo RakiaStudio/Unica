@@ -13,18 +13,18 @@
 import {
   at,
   bit,
-  cellName,
+  cellRef,
   cellValue,
   countBits,
   hasCandidate,
-  symbol,
-  unitName,
+  unitRef,
   valuesOf,
   type CandidateGrid,
   type CellValue,
   type Step,
   type TechniqueName,
 } from '../candidates.js';
+import { makeStep } from './step.js';
 
 /** All k-element combinations of `items`, in lexicographic order of positions. */
 export function combinations<T>(items: readonly T[], k: number): T[][] {
@@ -45,18 +45,8 @@ export function combinations<T>(items: readonly T[], k: number): T[][] {
   return result;
 }
 
-function capitalize(text: string): string {
-  return text.charAt(0).toUpperCase() + text.slice(1);
-}
-
-export function list(parts: readonly string[]): string {
-  if (parts.length <= 1) return parts.join('');
-  return `${parts.slice(0, -1).join(', ')} and ${at(parts, parts.length - 1)}`;
-}
-
 function nakedSubset(grid: CandidateGrid, k: number, technique: TechniqueName): Step | undefined {
   const { n, units } = grid.geometry;
-  const label = capitalize(technique);
   for (const unit of units) {
     const open = unit.cells.filter((cell) => at(grid.values, cell) === 0);
     const small = open.filter((cell) => {
@@ -77,13 +67,12 @@ function nakedSubset(grid: CandidateGrid, k: number, technique: TechniqueName): 
         }
       }
       if (eliminations.length === 0) continue;
-      const names = symbols.map(symbol);
-      return {
-        technique,
-        placements: [],
-        eliminations,
-        reason: `${label}: ${list(group.map((cell) => cellName(n, cell)))} hold only ${list(names)} between them, so ${list(names)} leave the other cells of ${unitName(unit)}`,
-      };
+      return makeStep(technique, [], eliminations, {
+        pattern: 'naked subset',
+        unit: unitRef(unit),
+        cells: group.map((cell) => cellRef(n, cell)),
+        values: symbols,
+      });
     }
   }
   return undefined;
@@ -91,7 +80,6 @@ function nakedSubset(grid: CandidateGrid, k: number, technique: TechniqueName): 
 
 function hiddenSubset(grid: CandidateGrid, k: number, technique: TechniqueName): Step | undefined {
   const { n, units } = grid.geometry;
-  const label = capitalize(technique);
   for (const unit of units) {
     const placed = unit.cells.reduce((mask, cell) => {
       const value = at(grid.values, cell);
@@ -122,12 +110,12 @@ function hiddenSubset(grid: CandidateGrid, k: number, technique: TechniqueName):
         }
       }
       if (eliminations.length === 0) continue;
-      return {
-        technique,
-        placements: [],
-        eliminations,
-        reason: `${label}: in ${unitName(unit)}, ${list(group.map(symbol))} can only go in ${list(cells.map((cell) => cellName(n, cell)))}, so those cells hold nothing else`,
-      };
+      return makeStep(technique, [], eliminations, {
+        pattern: 'hidden subset',
+        unit: unitRef(unit),
+        cells: cells.map((cell) => cellRef(n, cell)),
+        values: group,
+      });
     }
   }
   return undefined;
