@@ -123,6 +123,16 @@ describe('rating: soundness against the oracle', () => {
     );
   });
 
+  it('on generated 9x9 puzzles that need expert techniques', () => {
+    const s = sudoku();
+    fc.assert(
+      fc.property(seedArb, (seed) => {
+        walk(3, 3, s.generate({ seed, difficulty: 'expert' }).text.puzzle);
+      }),
+      { numRuns: 30 },
+    );
+  });
+
   it('on 9x9 puzzles that need hard techniques', () => {
     for (const { puzzle, hardest } of HARD) {
       expect(countSudokuSolutions(textToGrid(puzzle, 9), 3, 3)).toBe(1);

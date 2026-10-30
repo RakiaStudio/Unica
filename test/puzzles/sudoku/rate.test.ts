@@ -144,7 +144,7 @@ describe('generate with a difficulty', () => {
     const options: unknown = { seed: 1, difficulty: 'beyond' };
     expect(() => {
       Reflect.apply(s.generate.bind(s), undefined, [options]);
-    }).toThrow(/difficulty must be one of easy, medium, hard, got beyond/);
+    }).toThrow(/difficulty must be one of easy, medium, hard, expert, got beyond/);
   });
 
   it('rejects a bad maxAttempts', () => {

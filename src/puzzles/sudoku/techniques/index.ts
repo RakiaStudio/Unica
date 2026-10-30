@@ -5,28 +5,51 @@
  * progress, so a stronger technique is used only when every weaker one is
  * stuck. The difficulty of a puzzle is therefore the level of the strongest
  * technique it needed (ADR-0003). Levels never decrease down the list.
+ *
+ * The list only grows at the end, and a new technique always goes into a new
+ * level above every existing one (never into an existing level). The order is
+ * never changed, not even within a level. A puzzle is rated by the first
+ * techniques that work, so appending leaves every rating that finished before
+ * the new entries exactly as it was: same steps, same hardest technique, same
+ * difficulty. Only puzzles rated `beyond` can move, and only into the new
+ * level, so `generate({ seed, difficulty })` returns the same puzzle in every
+ * version that has that difficulty (ADR-0003).
  */
 
 import type { CandidateGrid, Step, TechniqueName } from '../candidates.js';
 import { claiming, pointing } from './intersections.js';
-import { xWing } from './fish.js';
+import { swordfish, xWing } from './fish.js';
+import { skyscraper, twoStringKite } from './patterns.js';
 import { hiddenSingle, nakedSingle } from './singles.js';
-import { hiddenPair, hiddenTriple, nakedPair, nakedTriple } from './subsets.js';
+import {
+  hiddenPair,
+  hiddenQuad,
+  hiddenTriple,
+  nakedPair,
+  nakedQuad,
+  nakedTriple,
+} from './subsets.js';
+import { xyWing, xyzWing } from './wings.js';
 
 /** `beyond` means the techniques below could not finish the puzzle. */
-export type Difficulty = 'easy' | 'medium' | 'hard' | 'beyond';
+export type Difficulty = 'easy' | 'medium' | 'hard' | 'expert' | 'beyond';
 
 /** Ordered from easiest to hardest. */
-export const DIFFICULTIES: readonly Difficulty[] = ['easy', 'medium', 'hard', 'beyond'];
+export const DIFFICULTIES: readonly Difficulty[] = ['easy', 'medium', 'hard', 'expert', 'beyond'];
 
 /**
  * The difficulties `generate` can aim for. `beyond` is left out: it only says
  * that the techniques here got stuck, which covers puzzles from one step past
- * medium to far harder, so asking for it would not mean anything definite.
+ * expert to far harder, so asking for it would not mean anything definite.
  */
 export type TargetDifficulty = Exclude<Difficulty, 'beyond'>;
 
-export const TARGET_DIFFICULTIES: readonly TargetDifficulty[] = ['easy', 'medium', 'hard'];
+export const TARGET_DIFFICULTIES: readonly TargetDifficulty[] = [
+  'easy',
+  'medium',
+  'hard',
+  'expert',
+];
 
 export interface Technique {
   readonly name: TechniqueName;
@@ -44,7 +67,17 @@ export const TECHNIQUES: readonly Technique[] = [
   { name: 'naked triple', level: 'hard', find: nakedTriple },
   { name: 'hidden triple', level: 'hard', find: hiddenTriple },
   { name: 'x-wing', level: 'hard', find: xWing },
+  // 0.3.0. Within expert: subsets, then fish, then single-digit patterns, then
+  // wings, following the pair -> pointing -> triple -> x-wing order above.
+  { name: 'naked quad', level: 'expert', find: nakedQuad },
+  { name: 'hidden quad', level: 'expert', find: hiddenQuad },
+  { name: 'swordfish', level: 'expert', find: swordfish },
+  { name: 'skyscraper', level: 'expert', find: skyscraper },
+  { name: '2-string kite', level: 'expert', find: twoStringKite },
+  { name: 'xy-wing', level: 'expert', find: xyWing },
+  { name: 'xyz-wing', level: 'expert', find: xyzWing },
 ];
 
 export { claiming, hiddenPair, hiddenSingle, hiddenTriple, nakedPair, nakedSingle, nakedTriple };
 export { pointing, xWing };
+export { hiddenQuad, nakedQuad, skyscraper, swordfish, twoStringKite, xyWing, xyzWing };

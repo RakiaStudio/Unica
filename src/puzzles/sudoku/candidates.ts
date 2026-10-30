@@ -70,7 +70,14 @@ export type TechniqueName =
   | 'claiming'
   | 'naked triple'
   | 'hidden triple'
-  | 'x-wing';
+  | 'x-wing'
+  | 'naked quad'
+  | 'hidden quad'
+  | 'swordfish'
+  | 'skyscraper'
+  | '2-string kite'
+  | 'xy-wing'
+  | 'xyz-wing';
 
 /** Element access that names the index when it fails, instead of yielding `undefined`. */
 export function at<T>(items: readonly T[], index: number): T {

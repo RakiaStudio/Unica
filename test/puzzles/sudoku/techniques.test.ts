@@ -8,13 +8,20 @@ import {
   TECHNIQUES,
   claiming,
   hiddenPair,
+  hiddenQuad,
   hiddenSingle,
   hiddenTriple,
   nakedPair,
+  nakedQuad,
   nakedSingle,
   nakedTriple,
   pointing,
+  skyscraper,
+  swordfish,
+  twoStringKite,
   xWing,
+  xyWing,
+  xyzWing,
 } from '../../../src/puzzles/sudoku/techniques/index.js';
 import { combinations } from '../../../src/puzzles/sudoku/techniques/subsets.js';
 
@@ -66,7 +73,7 @@ describe('techniques on an empty grid', () => {
   });
 
   it('are listed weakest first, and levels never decrease', () => {
-    const order = ['easy', 'medium', 'hard'];
+    const order = ['easy', 'medium', 'hard', 'expert'];
     const levels = TECHNIQUES.map((technique) => order.indexOf(technique.level));
     expect(levels).toEqual([...levels].sort((a, b) => a - b));
     expect(TECHNIQUES.map((technique) => technique.name)).toEqual([
@@ -79,6 +86,13 @@ describe('techniques on an empty grid', () => {
       'naked triple',
       'hidden triple',
       'x-wing',
+      'naked quad',
+      'hidden quad',
+      'swordfish',
+      'skyscraper',
+      '2-string kite',
+      'xy-wing',
+      'xyz-wing',
     ]);
   });
 });
@@ -303,6 +317,197 @@ describe('xWing', () => {
     remove(candidates, [1, 2], 2);
     remove(candidates, [8, 11], 2);
     expect(xWing(state(four, candidates))).toBeUndefined();
+  });
+});
+
+describe('nakedQuad', () => {
+  it('finds four cells sharing four symbols when no smaller subset does', () => {
+    const candidates = empty(nine);
+    candidates[0] = bitsOf([1, 2]);
+    candidates[1] = bitsOf([2, 3]);
+    candidates[2] = bitsOf([3, 4]);
+    candidates[3] = bitsOf([1, 4]);
+    const grid = state(nine, candidates);
+    expect(nakedPair(grid)).toBeUndefined();
+    expect(nakedTriple(grid)).toBeUndefined();
+    const step = nakedQuad(grid);
+    expect(step?.eliminations).toHaveLength(20);
+    expect(step?.reason).toBe(
+      'Naked quad: r1c1, r1c2, r1c3 and r1c4 hold only 1, 2, 3 and 4 between them, so 1, 2, 3 and 4 leave the other cells of row 1',
+    );
+  });
+});
+
+describe('hiddenQuad', () => {
+  it('finds four symbols confined to four cells when no smaller subset is', () => {
+    const candidates = empty(nine);
+    for (const value of [1, 2, 3, 4])
+      remove(
+        candidates,
+        row0.filter((cell) => cell > 3),
+        value,
+      );
+    const grid = state(nine, candidates);
+    expect(hiddenTriple(grid)).toBeUndefined();
+    const step = hiddenQuad(grid);
+    expect(step?.eliminations).toHaveLength(20);
+    expect(step?.reason).toBe(
+      'Hidden quad: in row 1, 1, 2, 3 and 4 can only go in r1c1, r1c2, r1c3 and r1c4, so those cells hold nothing else',
+    );
+  });
+});
+
+describe('swordfish', () => {
+  it('finds a symbol locked to three columns in three rows when no x-wing is', () => {
+    const candidates = empty(nine);
+    const keep: [number, number[]][] = [
+      [0, [1, 4]],
+      [4, [4, 7]],
+      [8, [1, 7]],
+    ];
+    for (const [r, cols] of keep) {
+      remove(
+        candidates,
+        row0.filter((c) => !cols.includes(c)).map((c) => r * 9 + c),
+        4,
+      );
+    }
+    const grid = state(nine, candidates);
+    expect(xWing(grid)).toBeUndefined();
+    const step = swordfish(grid);
+    expect(step?.eliminations).toHaveLength(18);
+    expect(
+      step?.eliminations.every(
+        ({ row, col }) => [1, 4, 7].includes(col) && ![0, 4, 8].includes(row),
+      ),
+    ).toBe(true);
+    expect(step?.reason).toBe(
+      'Swordfish: 4 in rows 1, 5 and 9 can only go in columns 2, 5 and 8, so 4 leaves the rest of those columns',
+    );
+  });
+
+  it('finds the same pattern with rows and columns swapped', () => {
+    const candidates = empty(nine);
+    const keep: [number, number[]][] = [
+      [0, [1, 4]],
+      [4, [4, 7]],
+      [8, [1, 7]],
+    ];
+    for (const [c, rows] of keep) {
+      remove(
+        candidates,
+        row0.filter((r) => !rows.includes(r)).map((r) => r * 9 + c),
+        4,
+      );
+    }
+    expect(swordfish(state(nine, candidates))?.reason).toBe(
+      'Swordfish: 4 in columns 1, 5 and 9 can only go in rows 2, 5 and 8, so 4 leaves the rest of those rows',
+    );
+  });
+});
+
+describe('skyscraper', () => {
+  it('removes a symbol from the cells that see both tops', () => {
+    const candidates = empty(nine);
+    remove(
+      candidates,
+      row0.filter((c) => c !== 0 && c !== 4),
+      6,
+    );
+    remove(
+      candidates,
+      row0.filter((c) => c !== 0 && c !== 3).map((c) => 54 + c),
+      6,
+    );
+    const step = skyscraper(state(nine, candidates));
+    expect(step?.eliminations).toEqual([
+      { row: 1, col: 3, value: 6 },
+      { row: 2, col: 3, value: 6 },
+      { row: 7, col: 4, value: 6 },
+      { row: 8, col: 4, value: 6 },
+    ]);
+    expect(step?.reason).toBe(
+      'Skyscraper: 6 can only go in two cells in row 1 and in row 7, linked in column 1, so one of r1c5 and r7c4 is 6 and 6 leaves the cells that see both',
+    );
+  });
+
+  it('works with columns as the base', () => {
+    const candidates = empty(nine);
+    remove(
+      candidates,
+      row0.filter((r) => r !== 0 && r !== 4).map((r) => r * 9),
+      6,
+    );
+    remove(
+      candidates,
+      row0.filter((r) => r !== 0 && r !== 3).map((r) => r * 9 + 6),
+      6,
+    );
+    expect(skyscraper(state(nine, candidates))?.reason).toBe(
+      'Skyscraper: 6 can only go in two cells in column 1 and in column 7, linked in row 1, so one of r5c1 and r4c7 is 6 and 6 leaves the cells that see both',
+    );
+  });
+
+  it('ignores links whose ends are not joined, or that remove nothing', () => {
+    const candidates = empty(four);
+    // 1 in rows 1 and 3 at columns 1-2 and 3-4: no shared column.
+    remove(candidates, [2, 3, 8, 9], 1);
+    expect(skyscraper(state(four, candidates))).toBeUndefined();
+  });
+});
+
+describe('twoStringKite', () => {
+  it('joins a row and a column through a box', () => {
+    const candidates = empty(nine);
+    remove(candidates, [0, 2, 3, 4, 5, 6, 8], 5);
+    remove(candidates, [0, 9, 27, 36, 45, 63, 72], 5);
+    const step = twoStringKite(state(nine, candidates));
+    expect(step?.eliminations).toEqual([{ row: 6, col: 7, value: 5 }]);
+    expect(step?.reason).toBe(
+      '2-string kite: 5 can only go in two cells in row 1 and in column 1, linked in box 1, so one of r1c8 and r7c1 is 5 and 5 leaves the cells that see both',
+    );
+  });
+});
+
+describe('xyWing', () => {
+  it('removes the shared symbol from cells that see both pincers', () => {
+    const candidates = empty(nine);
+    candidates[0] = bitsOf([1, 2]);
+    candidates[4] = bitsOf([1, 3]);
+    candidates[27] = bitsOf([2, 3]);
+    const step = xyWing(state(nine, candidates));
+    expect(step?.eliminations).toEqual([{ row: 3, col: 4, value: 3 }]);
+    expect(step?.reason).toBe(
+      'XY-wing: pivot r1c1 (1 or 2) with pincers r1c5 (1 or 3) and r4c1 (2 or 3), so one of the pincers is 3 and 3 leaves the cells that see both pincers',
+    );
+  });
+
+  it('ignores pincers that do not form a wing', () => {
+    const candidates = empty(nine);
+    candidates[0] = bitsOf([1, 2]);
+    candidates[4] = bitsOf([1, 3]);
+    candidates[27] = bitsOf([1, 3]);
+    candidates[40] = bitsOf([1, 4]);
+    expect(xyWing(state(nine, candidates))).toBeUndefined();
+  });
+});
+
+describe('xyzWing', () => {
+  it('removes the shared symbol from cells that see the pivot and both pincers', () => {
+    const candidates = empty(nine);
+    candidates[0] = bitsOf([1, 2, 3]);
+    candidates[1] = bitsOf([1, 3]);
+    candidates[27] = bitsOf([2, 3]);
+    const grid = state(nine, candidates);
+    expect(xyWing(grid)).toBeUndefined();
+    const step = xyzWing(grid);
+    expect(step?.eliminations).toEqual([
+      { row: 1, col: 0, value: 3 },
+      { row: 2, col: 0, value: 3 },
+    ]);
+    expect(step?.reason).toBe(
+      'XYZ-wing: pivot r1c1 (1, 2 or 3) with pincers r1c2 (1 or 3) and r4c1 (2 or 3), so one of the three is 3 and 3 leaves the cells that see all three',
+    );
   });
 });
 
