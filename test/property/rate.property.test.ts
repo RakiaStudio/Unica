@@ -63,6 +63,16 @@ const HARD = [
 
 let checkedSteps = 0;
 
+/**
+ * Batch numbers for running `total` property runs as tests of `size` runs
+ * each. One long synchronous test can starve the vitest worker's RPC on CI
+ * ("Timeout calling onTaskUpdate"); each batch's `fc.assert` draws its own
+ * random seed, so the batches together cover `total` distinct runs.
+ */
+function batches(total: number, size: number): number[] {
+  return Array.from({ length: total / size }, (_, i) => i + 1);
+}
+
 function expectSound(grid: CandidateGrid, step: Step, solution: readonly number[]): void {
   const { n } = grid.geometry;
   for (const { row, col, value } of step.placements) {
@@ -101,37 +111,43 @@ function walk(boxRows: number, boxCols: number, text: string): void {
 }
 
 describe('rating: soundness against the oracle', () => {
-  it('on generated 9x9 puzzles', () => {
-    fc.assert(
-      fc.property(seedArb, (seed) => {
-        walk(3, 3, sudoku().generate({ seed }).text.puzzle);
-      }),
-      { numRuns: 100 },
-    );
-  });
+  for (const batch of batches(100, 10)) {
+    it(`on generated 9x9 puzzles (batch ${String(batch)})`, () => {
+      fc.assert(
+        fc.property(seedArb, (seed) => {
+          walk(3, 3, sudoku().generate({ seed }).text.puzzle);
+        }),
+        { numRuns: 10 },
+      );
+    });
+  }
 
-  it('on generated 9x9 puzzles that need medium techniques', () => {
-    const s = sudoku();
-    fc.assert(
-      fc.property(seedArb, (seed) => {
-        const puzzle = s.generate({ seed, difficulty: 'medium' });
-        walk(3, 3, puzzle.text.puzzle);
-        // Reproducible: the same seed walks the same attempts to the same puzzle.
-        expect(s.generate({ seed, difficulty: 'medium' })).toEqual(puzzle);
-      }),
-      { numRuns: 30 },
-    );
-  });
+  for (const batch of batches(30, 5)) {
+    it(`on generated 9x9 puzzles that need medium techniques (batch ${String(batch)})`, () => {
+      const s = sudoku();
+      fc.assert(
+        fc.property(seedArb, (seed) => {
+          const puzzle = s.generate({ seed, difficulty: 'medium' });
+          walk(3, 3, puzzle.text.puzzle);
+          // Reproducible: the same seed walks the same attempts to the same puzzle.
+          expect(s.generate({ seed, difficulty: 'medium' })).toEqual(puzzle);
+        }),
+        { numRuns: 5 },
+      );
+    });
+  }
 
-  it('on generated 9x9 puzzles that need expert techniques', () => {
-    const s = sudoku();
-    fc.assert(
-      fc.property(seedArb, (seed) => {
-        walk(3, 3, s.generate({ seed, difficulty: 'expert' }).text.puzzle);
-      }),
-      { numRuns: 30 },
-    );
-  });
+  for (const batch of batches(30, 5)) {
+    it(`on generated 9x9 puzzles that need expert techniques (batch ${String(batch)})`, () => {
+      const s = sudoku();
+      fc.assert(
+        fc.property(seedArb, (seed) => {
+          walk(3, 3, s.generate({ seed, difficulty: 'expert' }).text.puzzle);
+        }),
+        { numRuns: 5 },
+      );
+    });
+  }
 
   it('on 9x9 puzzles that need hard techniques', () => {
     for (const { puzzle, hardest } of HARD) {
