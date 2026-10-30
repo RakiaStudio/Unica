@@ -72,7 +72,7 @@ export function explainRating(rating: Rating): string[] {
     );
   } else {
     lines.push(
-      'Stuck: none of the rated techniques applies here (beyond). The puzzle may still have one solution; it needs techniques stronger than x-wing.',
+      'Stuck: none of the rated techniques applies here (beyond). The puzzle may still have one solution; it needs techniques stronger than xyz-wing.',
     );
   }
   return lines;

@@ -104,16 +104,23 @@ s.explain(puzzle.text.puzzle);
 //   'Solved: medium, hardest technique naked pair.' ]
 ```
 
-| Difficulty | Meaning                                                         |
-| ---------- | --------------------------------------------------------------- |
-| `easy`     | naked and hidden singles are enough                             |
-| `medium`   | also needs a naked pair, hidden pair, pointing or claiming      |
-| `hard`     | also needs a naked triple, hidden triple or x-wing              |
-| `beyond`   | these techniques get stuck (a generated puzzle is still unique) |
+| Difficulty | Meaning                                                                                                       |
+| ---------- | ------------------------------------------------------------------------------------------------------------- |
+| `easy`     | naked and hidden singles are enough                                                                           |
+| `medium`   | also needs a naked pair, hidden pair, pointing or claiming                                                    |
+| `hard`     | also needs a naked triple, hidden triple or x-wing                                                            |
+| `expert`   | also needs a naked quad, hidden quad, swordfish, skyscraper, 2-string kite, xy-wing or xyz-wing (since 0.3.0) |
+| `beyond`   | these techniques get stuck (a generated puzzle is still unique)                                               |
 
-`rate` can return all four. `generate({ difficulty })` accepts `easy`, `medium`
-and `hard` (`TARGET_DIFFICULTIES`) but not `beyond`: being stuck covers puzzles
-from one step past medium to far harder, so it is not a level to aim for.
+`rate` can return all five. `generate({ difficulty })` accepts `easy`, `medium`,
+`hard` and `expert` (`TARGET_DIFFICULTIES`) but not `beyond`: being stuck covers
+puzzles from one step past expert to far harder, so it is not a level to aim
+for. Uniqueness techniques (such as unique rectangles) and chains are left out
+on purpose; ADR-0003 says why.
+
+**A puzzle that 0.2 rated `beyond` can be rated `expert` from 0.3.0 on.** If you
+store ratings, a stored `beyond` from 0.2 may now mean `expert`. Stored `easy`,
+`medium` and `hard` ratings do not change.
 
 The difficulty is the strongest technique needed, not a sum of step scores:
 a sum needs weights nobody can justify, and cannot be explained to a solver
@@ -122,10 +129,12 @@ difficulty are separate things: the 17-clue puzzle in the test suite has the
 fewest clues possible and rates `easy`.
 
 Generating to a difficulty retries with seeds derived from yours (attempt `k`
-uses `` `${seed}:${k}` ``), so the same seed always gives the same puzzle
-within one version of the package. A later version that adds techniques can
-rate the same puzzle differently, and then the same seed may land on another
-puzzle; plain `generate` without a difficulty is not affected.
+uses `` `${seed}:${k}` ``), so the same seed always gives the same puzzle.
+That also holds across versions, because of one rule: new techniques are only
+ever added as a new level above all the others, never into an existing level
+and never between existing techniques (ADR-0003). A test pins what the
+published 0.2.0 returned for each level and checks that this version returns
+the same.
 Hard puzzles are rare (about 1 in 300 minimal 9x9 puzzles), so:
 
 - `generate({ difficulty })` throws `ExactCoverError` when `maxAttempts`
@@ -220,9 +229,10 @@ tests over random seeds, but it is true by the argument above, not by the tests.
 
 Every call to `generate` is driven by a seeded PRNG (sfc32) and reports the seed
 it used. The same problem and seed always produce the same puzzle. A bug report
-is a seed. For sudoku generated to a difficulty, the same holds within one
-version: the rating decides which attempt is kept, and a version with more
-techniques may rate differently.
+is a seed. For sudoku generated to a difficulty, the rating decides which attempt
+is kept, so this also relies on ratings not changing between versions; the rule
+for adding techniques in ADR-0003 is what guarantees that, and a fixture test
+against the published 0.2.0 checks it.
 
 ## Architecture
 
@@ -296,11 +306,14 @@ solver in `test/helpers/brute-force.ts` that shares no code with `src/`.
   product of independent binary choices the generator keeps exactly one clue per
   choice; `permutation` is always a bijection.
 - **Soundness of the sudoku techniques** (`fast-check`): over generated 4x4, 6x6
-  and 9x9 puzzles (including ones generated to `medium` and `hard`), every
+  and 9x9 puzzles (including ones generated to `medium`, `hard` and `expert`), every
   technique is asked for a step at every state the rater passes through, and
   every placement and elimination is checked against the oracle's solution. A
   solved rating must end on that solution. Each technique also has unit tests on
   handcrafted candidate states.
+- **Across versions**: the puzzles, attempts, ratings and `explain` output that
+  the published 0.2.0 returned for `generate({ seed, difficulty })` are
+  fixtures, and this version must return the same.
 - **Coverage**: 98% statements. The uncovered lines are defensive
   branches for states the type system cannot rule out.
 - **The published package**: after every release, a workflow installs the new
@@ -324,8 +337,9 @@ npm run check       # lint + typecheck + test + build, same as CI
 ## Performance
 
 Measured with `npm run bench` on a single core (Node 22). "Generate" includes
-finding a random solution and the full minimality pass. The `hard` row was
-measured over 100 seeds on the same setup (median 101 attempts, worst 1147).
+finding a random solution and the full minimality pass. The `hard` and `expert`
+rows were measured over 100 seeds each on the same setup (`hard`: median 101
+attempts, worst 1147; `expert`: median 6, worst 74).
 These are the values we measured on that setup, not promises.
 
 | Task                                     | Time                         |
@@ -336,6 +350,7 @@ These are the values we measured on that setup, not promises.
 | Find one 6x10 pentomino tiling           | ~3 ms                        |
 | Generate a minimal 6x10 pentomino puzzle | ~12 ms                       |
 | Generate a 9x9 sudoku rated `hard`       | median ~0.3 s, worst a few s |
+| Generate a 9x9 sudoku rated `expert`     | median ~20 ms, worst ~0.2 s  |
 
 Generation cost is dominated by the number of clues times the cost of one
 bounded solve. Keeping that solve cheap is the engine's job, which is why the

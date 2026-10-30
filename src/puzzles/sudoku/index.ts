@@ -67,9 +67,10 @@ export interface SudokuGenerateOptions extends GenerateOptions {
   /**
    * Keep generating until `rate` gives this difficulty. Attempt 1 uses `seed`;
    * attempt k uses the seed `` `${seed}:${k}` ``. The same seed therefore gives
-   * the same puzzle, and the returned `seed` reproduces it directly. Ratings
-   * can change when a later version adds techniques, so this holds within one
-   * version of the package.
+   * the same puzzle, and the returned `seed` reproduces it directly. This
+   * holds across versions too: techniques are only added as a new level above
+   * the existing ones, so the rating of an attempt at any existing level never
+   * changes (ADR-0003).
    */
   readonly difficulty: TargetDifficulty;
   /**

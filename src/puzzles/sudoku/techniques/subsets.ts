@@ -6,7 +6,8 @@
  * - Hidden subset: k symbols whose places together are exactly k cells. Those
  *   cells must hold those symbols, so every other candidate leaves them.
  *
- * Pairs (k = 2) and triples (k = 3) are rated as separate techniques.
+ * Pairs (k = 2), triples (k = 3) and quads (k = 4) are rated as separate
+ * techniques.
  */
 
 import {
@@ -44,14 +45,18 @@ export function combinations<T>(items: readonly T[], k: number): T[][] {
   return result;
 }
 
-function list(parts: readonly string[]): string {
+function capitalize(text: string): string {
+  return text.charAt(0).toUpperCase() + text.slice(1);
+}
+
+export function list(parts: readonly string[]): string {
   if (parts.length <= 1) return parts.join('');
   return `${parts.slice(0, -1).join(', ')} and ${at(parts, parts.length - 1)}`;
 }
 
 function nakedSubset(grid: CandidateGrid, k: number, technique: TechniqueName): Step | undefined {
   const { n, units } = grid.geometry;
-  const label = technique.charAt(0).toUpperCase() + technique.slice(1);
+  const label = capitalize(technique);
   for (const unit of units) {
     const open = unit.cells.filter((cell) => at(grid.values, cell) === 0);
     const small = open.filter((cell) => {
@@ -86,7 +91,7 @@ function nakedSubset(grid: CandidateGrid, k: number, technique: TechniqueName): 
 
 function hiddenSubset(grid: CandidateGrid, k: number, technique: TechniqueName): Step | undefined {
   const { n, units } = grid.geometry;
-  const label = technique.charAt(0).toUpperCase() + technique.slice(1);
+  const label = capitalize(technique);
   for (const unit of units) {
     const placed = unit.cells.reduce((mask, cell) => {
       const value = at(grid.values, cell);
@@ -136,3 +141,7 @@ export const nakedTriple = (grid: CandidateGrid): Step | undefined =>
   nakedSubset(grid, 3, 'naked triple');
 export const hiddenTriple = (grid: CandidateGrid): Step | undefined =>
   hiddenSubset(grid, 3, 'hidden triple');
+export const nakedQuad = (grid: CandidateGrid): Step | undefined =>
+  nakedSubset(grid, 4, 'naked quad');
+export const hiddenQuad = (grid: CandidateGrid): Step | undefined =>
+  hiddenSubset(grid, 4, 'hidden quad');
