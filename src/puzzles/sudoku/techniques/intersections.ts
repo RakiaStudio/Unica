@@ -11,13 +11,13 @@ import {
   at,
   cellValue,
   hasCandidate,
-  symbol,
-  unitName,
+  unitRef,
   type CandidateGrid,
   type CellValue,
   type Step,
   type Unit,
 } from '../candidates.js';
+import { makeStep } from './step.js';
 
 function placesIn(grid: CandidateGrid, unit: Unit, value: number): number[] | undefined {
   if (unit.cells.some((cell) => at(grid.values, cell) === value)) return undefined;
@@ -45,12 +45,12 @@ export function pointing(grid: CandidateGrid): Step | undefined {
         if (!places.every((cell) => line.cells.includes(cell))) continue;
         const eliminations = eliminate(grid, line, box, value);
         if (eliminations.length === 0) continue;
-        return {
-          technique: 'pointing',
-          placements: [],
-          eliminations,
-          reason: `Pointing: in ${unitName(box)}, ${symbol(value)} is confined to ${unitName(line)}, so ${symbol(value)} leaves the rest of ${unitName(line)}`,
-        };
+        return makeStep('pointing', [], eliminations, {
+          pattern: 'pointing',
+          box: unitRef(box),
+          line: unitRef(line),
+          value,
+        });
       }
     }
   }
@@ -67,12 +67,12 @@ export function claiming(grid: CandidateGrid): Step | undefined {
       if (!places.every((cell) => box.cells.includes(cell))) continue;
       const eliminations = eliminate(grid, box, line, value);
       if (eliminations.length === 0) continue;
-      return {
-        technique: 'claiming',
-        placements: [],
-        eliminations,
-        reason: `Claiming: in ${unitName(line)}, ${symbol(value)} is confined to ${unitName(box)}, so ${symbol(value)} leaves the rest of ${unitName(box)}`,
-      };
+      return makeStep('claiming', [], eliminations, {
+        pattern: 'claiming',
+        line: unitRef(line),
+        box: unitRef(box),
+        value,
+      });
     }
   }
   return undefined;

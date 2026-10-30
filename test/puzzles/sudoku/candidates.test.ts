@@ -69,6 +69,7 @@ describe('applyStep, isSolved, isConsistent', () => {
       technique: 'naked single',
       placements: [{ row: 0, col: 0, value: 1 }],
       eliminations: [{ row: 3, col: 3, value: 2 }],
+      detail: { pattern: 'naked single', cell: { row: 0, col: 0 }, value: 1 },
       reason: '',
     });
     expect(next.values[0]).toBe(1);
@@ -95,6 +96,12 @@ describe('applyStep, isSolved, isConsistent', () => {
       technique: 'pointing',
       placements: [],
       eliminations,
+      detail: {
+        pattern: 'pointing',
+        box: { kind: 'box', index: 0 },
+        line: { kind: 'row', index: 0 },
+        value: 4,
+      },
       reason: '',
     });
     expect(isConsistent(broken)).toBe(false);

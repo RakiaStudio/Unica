@@ -106,6 +106,7 @@ describe('nakedSingle', () => {
       technique: 'naked single',
       placements: [{ row: 1, col: 1, value: 3 }],
       eliminations: [],
+      detail: { pattern: 'naked single', cell: { row: 1, col: 1 }, value: 3 },
       reason: 'Naked single: r2c2 can only be 3',
     });
   });

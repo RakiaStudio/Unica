@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { DIFFICULTIES, ExactCoverError, TARGET_DIFFICULTIES, sudoku } from '../../../src/index.js';
+import {
+  DIFFICULTIES,
+  ExactCoverError,
+  TARGET_DIFFICULTIES,
+  compareRatings,
+  sudoku,
+} from '../../../src/index.js';
 import { applyStep, fromValues, geometry } from '../../../src/puzzles/sudoku/candidates.js';
 import { countSudokuSolutions, solveSudoku, textToGrid } from '../../helpers/brute-force.js';
 
@@ -29,18 +35,34 @@ describe('rate', () => {
     expect(rating.difficulty).toBe('easy');
     expect(rating.hardest).toBe('hidden single');
     expect(rating.steps).toHaveLength(81 - 17);
+    expect(rating.levels).toEqual({ easy: 64, medium: 0, hard: 0, expert: 0 });
+    expect((rating.uses['naked single'] ?? 0) + (rating.uses['hidden single'] ?? 0)).toBe(64);
     expect(replay(SEVENTEEN)).toBe(SEVENTEEN_SOLUTION);
   });
 
   it('rates Easter Monster beyond: it is unique, but nothing here applies', () => {
     expect(countSudokuSolutions(textToGrid(EASTER_MONSTER, 9), 3, 3)).toBe(1);
     const rating = sudoku().rate(EASTER_MONSTER);
-    expect(rating).toEqual({ solved: false, difficulty: 'beyond', hardest: undefined, steps: [] });
+    expect(rating).toEqual({
+      solved: false,
+      difficulty: 'beyond',
+      hardest: undefined,
+      steps: [],
+      uses: {},
+      levels: { easy: 0, medium: 0, hard: 0, expert: 0 },
+    });
   });
 
   it('rates a full grid easy with no steps', () => {
     const rating = sudoku().rate(SEVENTEEN_SOLUTION);
-    expect(rating).toEqual({ solved: true, difficulty: 'easy', hardest: undefined, steps: [] });
+    expect(rating).toEqual({
+      solved: true,
+      difficulty: 'easy',
+      hardest: undefined,
+      steps: [],
+      uses: {},
+      levels: { easy: 0, medium: 0, hard: 0, expert: 0 },
+    });
   });
 
   it('rates a puzzle with no solution beyond', () => {
@@ -63,6 +85,25 @@ describe('rate', () => {
   it('refuses grids of more than 32 symbols', () => {
     const big = sudoku({ boxRows: 5, boxCols: 7 });
     expect(() => big.rate('.'.repeat(35 * 35))).toThrow(ExactCoverError);
+  });
+});
+
+describe('compareRatings', () => {
+  it('orders by difficulty, then by uses of the hardest level, then by steps above easy', () => {
+    const s = sudoku();
+    const easy = s.rate(SEVENTEEN);
+    const medium = s.generate({ seed: 'daily-2026-10-29', difficulty: 'medium' }).rating;
+    const stuck = s.rate(EASTER_MONSTER);
+    expect(compareRatings(easy, medium)).toBeLessThan(0);
+    expect(compareRatings(medium, stuck)).toBeLessThan(0);
+    expect(compareRatings(stuck, stuck)).toBe(0);
+    // Within easy, more easy steps count as harder: a full grid needs none.
+    expect(compareRatings(easy, s.rate(SEVENTEEN_SOLUTION))).toBeGreaterThan(0);
+    const once = { ...medium, levels: { ...medium.levels, medium: 1 } };
+    const twice = { ...medium, levels: { ...medium.levels, medium: 2 } };
+    expect(compareRatings(once, twice)).toBeLessThan(0);
+    const moreEasy = { ...once, steps: [...once.steps, ...once.steps] };
+    expect(compareRatings(once, { ...moreEasy, levels: once.levels })).toBeLessThan(0);
   });
 });
 
@@ -103,6 +144,14 @@ describe('generate with a difficulty', () => {
       '23. Naked pair: r7c4 and r7c6 hold only 2 and 5 between them, so 2 and 5 leave the other cells of row 7',
     );
     expect(lines.at(-1)).toBe('Solved: medium, hardest technique naked pair.');
+    const ja = s.explain(puzzle.text.puzzle, { locale: 'ja' });
+    expect(ja.slice(0, 2)).toEqual([
+      '1. 残り1つ：1行3列 に入るのは 8 だけ',
+      '2. ここだけ：2行目で 6 が入るのは 2行2列 だけ',
+    ]);
+    expect(ja.at(-1)).toBe(
+      '解けました：難易度は「ふつう」、最も強い手筋は「候補の組（2つ）」です。',
+    );
   });
 
   for (const difficulty of TARGET_DIFFICULTIES) {

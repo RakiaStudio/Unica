@@ -17,13 +17,14 @@ import {
   at,
   cellValue,
   hasCandidate,
-  symbol,
+  unitRef,
   type CandidateGrid,
   type CellValue,
   type Step,
   type Unit,
 } from '../candidates.js';
-import { combinations, list } from './subsets.js';
+import { makeStep } from './step.js';
+import { combinations } from './subsets.js';
 
 /** Positions (index within the line) where `value` can go, or `undefined` when placed. */
 function positions(grid: CandidateGrid, line: Unit, value: number): number[] | undefined {
@@ -64,15 +65,12 @@ function xWingAlong(
       }
       if (eliminations.length === 0) continue;
       eliminations.sort((x, y) => x.row - y.row || x.col - y.col);
-      const kind = a.base.kind === 'row' ? 'rows' : 'columns';
-      const other = a.base.kind === 'row' ? 'columns' : 'rows';
-      const [first, second] = lines.map((line) => String(line.index + 1));
-      return {
-        technique: 'x-wing',
-        placements: [],
-        eliminations,
-        reason: `X-wing: ${symbol(value)} in ${kind} ${String(a.base.index + 1)} and ${String(b.base.index + 1)} can only go in ${other} ${first ?? '?'} and ${second ?? '?'}, so ${symbol(value)} leaves the rest of those ${other}`,
-      };
+      return makeStep('x-wing', [], eliminations, {
+        pattern: 'fish',
+        value,
+        bases: [unitRef(a.base), unitRef(b.base)],
+        covers: lines.map(unitRef),
+      });
     }
   }
   return undefined;
@@ -107,17 +105,12 @@ function swordfishAlong(
     }
     if (eliminations.length === 0) continue;
     eliminations.sort((x, y) => x.row - y.row || x.col - y.col);
-    const first = at(group, 0).base;
-    const kind = first.kind === 'row' ? 'rows' : 'columns';
-    const other = first.kind === 'row' ? 'columns' : 'rows';
-    const baseList = list(group.map((line) => String(line.base.index + 1)));
-    const coverList = list(used.map((position) => String(position + 1)));
-    return {
-      technique: 'swordfish',
-      placements: [],
-      eliminations,
-      reason: `Swordfish: ${symbol(value)} in ${kind} ${baseList} can only go in ${other} ${coverList}, so ${symbol(value)} leaves the rest of those ${other}`,
-    };
+    return makeStep('swordfish', [], eliminations, {
+      pattern: 'fish',
+      value,
+      bases: group.map((line) => unitRef(line.base)),
+      covers: used.map((position) => unitRef(at(covers, position))),
+    });
   }
   return undefined;
 }

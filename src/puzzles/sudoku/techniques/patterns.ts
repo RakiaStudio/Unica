@@ -14,17 +14,17 @@
 
 import {
   at,
-  cellName,
+  cellRef,
   cellValue,
   hasCandidate,
-  symbol,
-  unitName,
+  unitRef,
   type CandidateGrid,
   type CellValue,
   type Step,
   type TechniqueName,
   type Unit,
 } from '../candidates.js';
+import { makeStep } from './step.js';
 
 interface Link {
   readonly unit: Unit;
@@ -70,7 +70,7 @@ function join(
   second: Link,
   value: number,
   technique: TechniqueName,
-  joined: (a: number, b: number) => string | undefined,
+  joined: (a: number, b: number) => Unit | undefined,
 ): Step | undefined {
   const { n } = grid.geometry;
   for (const [near1, far1] of ends(first)) {
@@ -82,13 +82,13 @@ function join(
         (x, y) => x.row - y.row || x.col - y.col,
       );
       if (eliminations.length === 0) continue;
-      const label = technique === 'skyscraper' ? 'Skyscraper' : '2-string kite';
-      return {
-        technique,
-        placements: [],
-        eliminations,
-        reason: `${label}: ${symbol(value)} can only go in two cells in ${unitName(first.unit)} and in ${unitName(second.unit)}, linked in ${via}, so one of ${cellName(n, far1)} and ${cellName(n, far2)} is ${symbol(value)} and ${symbol(value)} leaves the cells that see both`,
-      };
+      return makeStep(technique, [], eliminations, {
+        pattern: 'linked pairs',
+        value,
+        links: [unitRef(first.unit), unitRef(second.unit)],
+        via: unitRef(via),
+        ends: [cellRef(n, far1), cellRef(n, far2)],
+      });
     }
   }
   return undefined;
@@ -106,8 +106,7 @@ export function skyscraper(grid: CandidateGrid): Step | undefined {
       for (let i = 0; i < found.length; i++) {
         for (let j = i + 1; j < found.length; j++) {
           const step = join(grid, at(found, i), at(found, j), value, 'skyscraper', (a, b) => {
-            const line = across.find((unit) => unit.cells.includes(a) && unit.cells.includes(b));
-            return line === undefined ? undefined : unitName(line);
+            return across.find((unit) => unit.cells.includes(a) && unit.cells.includes(b));
           });
           if (step !== undefined) return step;
         }
@@ -126,7 +125,7 @@ export function twoStringKite(grid: CandidateGrid): Step | undefined {
       for (const column of columnLinks) {
         const step = join(grid, row, column, value, '2-string kite', (a, b) => {
           const box = at(boxOf, a);
-          return box === at(boxOf, b) ? unitName(at(boxes, box)) : undefined;
+          return box === at(boxOf, b) ? at(boxes, box) : undefined;
         });
         if (step !== undefined) return step;
       }

@@ -11,25 +11,24 @@
 
 import {
   at,
-  cellName,
+  cellRef,
   countBits,
-  symbol,
   valuesOf,
   type CandidateGrid,
+  type CellCandidates,
   type CellValue,
   type Step,
 } from '../candidates.js';
+import { makeStep } from './step.js';
 import { seenByBoth } from './patterns.js';
 
 function wing(grid: CandidateGrid, pivotSize: 2 | 3): Step | undefined {
   const { n, peers } = grid.geometry;
   const technique = pivotSize === 2 ? 'xy-wing' : 'xyz-wing';
-  const label = pivotSize === 2 ? 'XY-wing' : 'XYZ-wing';
-  const describe = (cell: number): string => {
-    const names = valuesOf(at(grid.candidates, cell), n).map(symbol);
-    const last = at(names, names.length - 1);
-    return `${cellName(n, cell)} (${names.slice(0, -1).join(', ')} or ${last})`;
-  };
+  const held = (cell: number): CellCandidates => ({
+    cell: cellRef(n, cell),
+    values: valuesOf(at(grid.candidates, cell), n),
+  });
 
   for (let pivot = 0; pivot < n * n; pivot++) {
     const pivotMask = at(grid.candidates, pivot);
@@ -62,14 +61,12 @@ function wing(grid: CandidateGrid, pivotSize: 2 | 3): Step | undefined {
         eliminations = eliminations.filter(({ row, col }) => row * n + col !== pivot);
         if (eliminations.length === 0) continue;
         eliminations.sort((x, y) => x.row - y.row || x.col - y.col);
-        const which = pivotSize === 2 ? 'the pincers' : 'the three';
-        const sight = pivotSize === 2 ? 'both pincers' : 'all three';
-        return {
-          technique,
-          placements: [],
-          eliminations,
-          reason: `${label}: pivot ${describe(pivot)} with pincers ${describe(a)} and ${describe(b)}, so one of ${which} is ${symbol(z)} and ${symbol(z)} leaves the cells that see ${sight}`,
-        };
+        return makeStep(technique, [], eliminations, {
+          pattern: 'wing',
+          value: z,
+          pivot: held(pivot),
+          pincers: [held(a), held(b)],
+        });
       }
     }
   }

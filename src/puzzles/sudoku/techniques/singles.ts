@@ -7,16 +7,16 @@
 
 import {
   at,
-  cellName,
+  cellRef,
   cellValue,
   countBits,
   hasCandidate,
-  symbol,
-  unitName,
+  unitRef,
   valuesOf,
   type CandidateGrid,
   type Step,
 } from '../candidates.js';
+import { makeStep } from './step.js';
 
 export function nakedSingle(grid: CandidateGrid): Step | undefined {
   const { n } = grid.geometry;
@@ -24,12 +24,11 @@ export function nakedSingle(grid: CandidateGrid): Step | undefined {
     const mask = at(grid.candidates, cell);
     if (at(grid.values, cell) !== 0 || countBits(mask) !== 1) continue;
     const value = at(valuesOf(mask, n), 0);
-    return {
-      technique: 'naked single',
-      placements: [cellValue(n, cell, value)],
-      eliminations: [],
-      reason: `Naked single: ${cellName(n, cell)} can only be ${symbol(value)}`,
-    };
+    return makeStep('naked single', [cellValue(n, cell, value)], [], {
+      pattern: 'naked single',
+      cell: cellRef(n, cell),
+      value,
+    });
   }
   return undefined;
 }
@@ -42,12 +41,12 @@ export function hiddenSingle(grid: CandidateGrid): Step | undefined {
       const places = unit.cells.filter((cell) => hasCandidate(at(grid.candidates, cell), value));
       if (places.length !== 1) continue;
       const cell = at(places, 0);
-      return {
-        technique: 'hidden single',
-        placements: [cellValue(n, cell, value)],
-        eliminations: [],
-        reason: `Hidden single: ${symbol(value)} can only go in ${cellName(n, cell)} within ${unitName(unit)}`,
-      };
+      return makeStep('hidden single', [cellValue(n, cell, value)], [], {
+        pattern: 'hidden single',
+        unit: unitRef(unit),
+        cell: cellRef(n, cell),
+        value,
+      });
     }
   }
   return undefined;

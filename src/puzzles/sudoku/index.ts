@@ -24,11 +24,23 @@ import { classify, type Classification } from '../../core/classify.js';
 import type { Seed } from '../../core/random.js';
 import type { ExactCoverSolver } from '../../core/solver.js';
 import { geometry } from './candidates.js';
-import { explainRating, rateValues, type Rating } from './rate.js';
+import { explainRating, rateValues, resolveLocale, type Rating } from './rate.js';
+import type { Locale, LocaleName } from './locales.js';
 import { TARGET_DIFFICULTIES, type TargetDifficulty } from './techniques/index.js';
 
-export type { CellValue, Step, TechniqueName } from './candidates.js';
+export type {
+  CellCandidates,
+  CellRef,
+  CellValue,
+  Step,
+  StepDetail,
+  TechniqueName,
+  UnitKind,
+  UnitRef,
+} from './candidates.js';
 export type { Rating } from './rate.js';
+export { compareRatings } from './rate.js';
+export { english, japanese, LOCALES, type Locale, type LocaleName } from './locales.js';
 export {
   DIFFICULTIES,
   TARGET_DIFFICULTIES,
@@ -81,6 +93,11 @@ export interface SudokuGenerateOptions extends GenerateOptions {
   readonly maxAttempts?: number;
 }
 
+export interface ExplainOptions {
+  /** `'en'` (default), `'ja'`, or your own `Locale` for any other language. */
+  readonly locale?: LocaleName | Locale;
+}
+
 export interface SudokuRatedPuzzle extends SudokuGenerated {
   /** How many puzzles were generated to find this one. */
   readonly attempts: number;
@@ -119,7 +136,7 @@ export interface Sudoku {
    */
   rate(text: string): Rating;
   /** The steps of `rate` as numbered sentences, followed by a one-line summary. */
-  explain(text: string): string[];
+  explain(text: string, options?: ExplainOptions): string[];
 }
 
 const SYMBOLS = '123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ';
@@ -285,6 +302,7 @@ export function sudoku(options: SudokuOptions = {}): Sudoku {
     },
     generate: generateSudoku,
     rate,
-    explain: (text) => explainRating(rate(text)),
+    explain: (text, explainOptions) =>
+      explainRating(rate(text), resolveLocale(explainOptions?.locale)),
   };
 }
