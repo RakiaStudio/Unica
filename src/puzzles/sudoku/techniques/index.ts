@@ -19,9 +19,18 @@ export type Difficulty = 'easy' | 'medium' | 'hard' | 'beyond';
 /** Ordered from easiest to hardest. */
 export const DIFFICULTIES: readonly Difficulty[] = ['easy', 'medium', 'hard', 'beyond'];
 
+/**
+ * The difficulties `generate` can aim for. `beyond` is left out: it only says
+ * that the techniques here got stuck, which covers puzzles from one step past
+ * medium to far harder, so asking for it would not mean anything definite.
+ */
+export type TargetDifficulty = Exclude<Difficulty, 'beyond'>;
+
+export const TARGET_DIFFICULTIES: readonly TargetDifficulty[] = ['easy', 'medium', 'hard'];
+
 export interface Technique {
   readonly name: TechniqueName;
-  readonly level: Exclude<Difficulty, 'beyond'>;
+  readonly level: TargetDifficulty;
   readonly find: (grid: CandidateGrid) => Step | undefined;
 }
 

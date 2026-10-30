@@ -70,6 +70,18 @@ rating are both deterministic, so the same seed walks the same attempts to the
 same puzzle, and the returned `seed` regenerates that puzzle directly with a
 plain `generate`.
 
+That reproducibility holds within one version of the package. The rating
+decides which attempt is kept, so a version that adds techniques can keep a
+different attempt for the same seed. The returned `seed` with a plain
+`generate` does not depend on the rating and stays stable.
+
+`generate` accepts `easy`, `medium` and `hard`, not `beyond`. A `beyond` rating
+says only that these techniques got stuck; measured over 5000 seeds, most such
+puzzles stop right after pointing or claiming, and a few are far harder. That
+is not a level a caller can meaningfully ask for. Leaving it out now also keeps
+a later choice open: accepting a new value is backward compatible, removing one
+is not. A value outside the three throws `ExactCoverError`.
+
 Measured over 5000 seeds, a minimal 9x9 puzzle rates easy about 43% of the time,
 medium 19%, hard 0.34% and beyond 38%. The default `maxAttempts` is therefore
 2000 rather than a smaller round number: at 0.34% per attempt, 2000 attempts

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { DIFFICULTIES, ExactCoverError, sudoku } from '../../../src/index.js';
+import { DIFFICULTIES, ExactCoverError, TARGET_DIFFICULTIES, sudoku } from '../../../src/index.js';
 import { applyStep, fromValues, geometry } from '../../../src/puzzles/sudoku/candidates.js';
 import { countSudokuSolutions, solveSudoku, textToGrid } from '../../helpers/brute-force.js';
 
@@ -105,7 +105,7 @@ describe('generate with a difficulty', () => {
     expect(lines.at(-1)).toBe('Solved: medium, hardest technique naked pair.');
   });
 
-  for (const difficulty of DIFFICULTIES) {
+  for (const difficulty of TARGET_DIFFICULTIES) {
     it(`finds a ${difficulty} puzzle, unique by the oracle, that re-rates the same`, () => {
       const puzzle = s.generate({ seed: 'target', difficulty });
       expect(puzzle.rating.difficulty).toBe(difficulty);
@@ -137,6 +137,14 @@ describe('generate with a difficulty', () => {
     expect(() => four.generate({ seed: 's', difficulty: 'hard', maxAttempts: 5 })).toThrow(
       /no hard puzzle in 5 attempts from seed s/,
     );
+  });
+
+  it('does not aim for beyond, even from untyped callers', () => {
+    // A caller without types, such as plain JavaScript, can still pass it.
+    const options: unknown = { seed: 1, difficulty: 'beyond' };
+    expect(() => {
+      Reflect.apply(s.generate.bind(s), undefined, [options]);
+    }).toThrow(/difficulty must be one of easy, medium, hard, got beyond/);
   });
 
   it('rejects a bad maxAttempts', () => {
