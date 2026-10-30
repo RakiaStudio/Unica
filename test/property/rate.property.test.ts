@@ -1,5 +1,5 @@
 import fc from 'fast-check';
-import { describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it } from 'vitest';
 import { TECHNIQUES, sudoku, type Step } from '../../src/index.js';
 import {
   applyStep,
@@ -72,6 +72,18 @@ let checkedSteps = 0;
 function batches(total: number, size: number): number[] {
   return Array.from({ length: total / size }, (_, i) => i + 1);
 }
+
+/**
+ * Synchronous tests run back to back never give the worker a macrotask turn,
+ * so splitting alone does not let the RPC reply in. A timer before each test
+ * does: the worker reads its messages between batches.
+ */
+beforeEach(
+  () =>
+    new Promise<void>((resolve) => {
+      setTimeout(resolve, 0);
+    }),
+);
 
 function expectSound(grid: CandidateGrid, step: Step, solution: readonly number[]): void {
   const { n } = grid.geometry;
