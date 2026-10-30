@@ -314,7 +314,8 @@ solver in `test/helpers/brute-force.ts` that shares no code with `src/`.
 - **Across versions**: the puzzles, attempts, ratings and `explain` output that
   the published 0.2.0 returned for `generate({ seed, difficulty })` are
   fixtures, and this version must return the same.
-- **Coverage**: 98% statements. The uncovered lines are defensive
+- **Coverage**: 99% statements as of 0.3.0 (the project keeps it at 95% or
+  more). The uncovered lines are defensive
   branches for states the type system cannot rule out.
 - **The published package**: after every release, a workflow installs the new
   version from npm into an empty directory, as a user would, checks its registry
