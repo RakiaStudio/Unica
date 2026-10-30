@@ -10,7 +10,7 @@
  * plain backtracking searches written for this script, so the package is never
  * asked to grade its own output. Each oracle is first calibrated on counts that
  * are known independently (288 complete 4x4 sudokus, 8 pentomino tilings of the
- * 3x20 rectangle).
+ * 3x20 rectangle, 92 solutions of 8 queens).
  *
  * Set EXPECT_VERSION to fail unless the resolved package has that version.
  */
@@ -25,6 +25,7 @@ import {
   polyominoTiling,
   sudoku,
 } from '@rakiastudio/unica';
+import * as unica from '@rakiastudio/unica';
 import { polyominoTiling as polyominoSubpath } from '@rakiastudio/unica/polyomino';
 import { sudoku as sudokuSubpath } from '@rakiastudio/unica/sudoku';
 
@@ -199,6 +200,36 @@ function countTilings(start, width, height, limit = 2) {
 }
 
 // ---------------------------------------------------------------------------
+// N-queens oracle: one queen per row, bitmasks for columns and diagonals.
+
+function countQueens(board, n, limit = 2) {
+  const fixed = Array.from({ length: n }, (_, r) => {
+    const cols = [];
+    for (let c = 0; c < n; c++) if (board[r * n + c] === 'Q') cols.push(c);
+    return cols;
+  });
+  if (fixed.some((cols) => cols.length > 1)) return 0;
+  let count = 0;
+  const walk = (r, cols, down, up) => {
+    if (count >= limit) return;
+    if (r === n) {
+      count++;
+      return;
+    }
+    const only = fixed[r][0];
+    for (let c = 0; c < n; c++) {
+      if (only !== undefined && c !== only) continue;
+      const d = r + c;
+      const u = r - c + n - 1;
+      if ((cols >> c) & 1 || (down >> d) & 1 || (up >> u) & 1) continue;
+      walk(r + 1, cols | (1 << c), down | (1 << d), up | (1 << u));
+    }
+  };
+  walk(0, 0, 0, 0);
+  return count;
+}
+
+// ---------------------------------------------------------------------------
 // Checks
 
 console.log(`@rakiastudio/unica ${installed}`);
@@ -210,6 +241,7 @@ if (expected !== undefined && expected !== '') {
 // 1. The oracles themselves, on counts known independently of this package.
 check('oracle: 288 complete 4x4 sudokus', countSudoku(Array(16).fill(0), 2, 2, 1000) === 288);
 check('oracle: 8 pentomino tilings of 3x20', countTilings(Array(60).fill('.'), 20, 3, 1000) === 8);
+check('oracle: 92 solutions of 8 queens', countQueens(Array(64).fill('.'), 8, 1000) === 92);
 
 // 2. The README examples.
 const s = sudoku();
@@ -361,6 +393,50 @@ verifySudoku(3, 3, seeds(30, 'nine'));
 verifyPentomino(20, 3, [1, 2, 3, 4, 5, 6, 7, 8]);
 verifyPentomino(10, 6, [42, 7, 'a', 'b']);
 
+// N queens (0.6.0 and later).
+if (typeof unica.queens === 'function') {
+  for (const n of [6, 8, 10]) {
+    const board = unica.queens({ n });
+    const tally = { unique: 0, minimal: 0, complete: 0, same: 0 };
+    const list = seeds(10, `queens-${n}`);
+    for (const seed of list) {
+      const puzzle = board.generate({ seed });
+      const placed = [...puzzle.text.puzzle.replace(/\s+/g, '')];
+      const solution = [...puzzle.text.solution.replace(/\s+/g, '')];
+      if (countQueens(placed, n) === 1) tally.unique++;
+      if (solution.filter((c) => c === 'Q').length === n && countQueens(solution, n) === 1) {
+        tally.complete++;
+      }
+      const everyQueenNeeded = placed.every(
+        (c, i) =>
+          c !== 'Q' ||
+          countQueens(
+            placed.map((d, j) => (j === i ? '.' : d)),
+            n,
+          ) >= 2,
+      );
+      if (everyQueenNeeded && puzzle.minimal) tally.minimal++;
+      if (board.generate({ seed }).text.puzzle === puzzle.text.puzzle) tally.same++;
+    }
+    const total = `/${list.length}`;
+    check(`queens ${n}: unique`, tally.unique === list.length, tally.unique + total);
+    check(`queens ${n}: minimal`, tally.minimal === list.length, tally.minimal + total);
+    check(
+      `queens ${n}: solution places ${n} queens`,
+      tally.complete === list.length,
+      tally.complete + total,
+    );
+    check(`queens ${n}: same seed, same puzzle`, tally.same === list.length, tally.same + total);
+  }
+  check(
+    'README: 8 queens for seed 42',
+    unica.queens({ n: 8 }).generate({ seed: 42 }).text.puzzle.trim() ===
+      '....Q...\n........\n........\n........\n........\n.Q......\n.....Q..\n........',
+  );
+} else {
+  console.log(`skip queens checks: ${installed} has no queens()`);
+}
+
 // 4. Reproducible, including across processes.
 const inChild = (seed) =>
   execFileSync(process.execPath, [
@@ -370,6 +446,31 @@ const inChild = (seed) =>
      process.stdout.write(sudoku().generate({ seed: ${JSON.stringify(seed)} }).text.puzzle);`,
   ]).toString();
 const here = s.generate({ seed: 'repro' }).text.puzzle;
+const pentominoInChild = (seed) =>
+  execFileSync(process.execPath, [
+    '--input-type=module',
+    '-e',
+    `import { polyominoTiling, PENTOMINOES } from '@rakiastudio/unica';
+     process.stdout.write(polyominoTiling({ width: 10, height: 6, pieces: PENTOMINOES }).generate({ seed: ${JSON.stringify(seed)} }).text.puzzle);`,
+  ]).toString();
+check(
+  'reproducible: pentomino in another process matches this one',
+  pentominoInChild('repro') ===
+    polyominoTiling({ width: 10, height: 6, pieces: PENTOMINOES }).generate({ seed: 'repro' }).text
+      .puzzle,
+);
+if (typeof unica.queens === 'function') {
+  const queensInChild = execFileSync(process.execPath, [
+    '--input-type=module',
+    '-e',
+    `import { queens } from '@rakiastudio/unica';
+     process.stdout.write(queens({ n: 8 }).generate({ seed: 'repro' }).text.puzzle);`,
+  ]).toString();
+  check(
+    'reproducible: queens in another process matches this one',
+    queensInChild === unica.queens({ n: 8 }).generate({ seed: 'repro' }).text.puzzle,
+  );
+}
 check('reproducible: same seed in two other processes', inChild('repro') === inChild('repro'));
 check('reproducible: other process matches this one', inChild('repro') === here);
 check(
@@ -410,6 +511,10 @@ check(
   'subpaths ./sudoku and ./polyomino load',
   typeof sudokuSubpath === 'function' && typeof polyominoSubpath === 'function',
 );
+if (typeof unica.queens === 'function') {
+  const queensSubpath = await import('@rakiastudio/unica/queens');
+  check('subpath ./queens loads', typeof queensSubpath.queens === 'function');
+}
 
 console.log(failures === 0 ? 'all checks passed' : `${failures} check(s) failed`);
 process.exitCode = failures === 0 ? 0 : 1;
