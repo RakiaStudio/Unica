@@ -110,17 +110,19 @@ s.explain(puzzle.text.puzzle);
 | `medium`   | also needs a naked pair, hidden pair, pointing or claiming                                                    |
 | `hard`     | also needs a naked triple, hidden triple or x-wing                                                            |
 | `expert`   | also needs a naked quad, hidden quad, swordfish, skyscraper, 2-string kite, xy-wing or xyz-wing (since 0.3.0) |
+| `master`   | also needs a jellyfish, finned x-wing, finned swordfish, empty rectangle, w-wing or wxyz-wing (since 0.6.0)   |
 | `beyond`   | these techniques get stuck (a generated puzzle is still unique)                                               |
 
-`rate` can return all five. `generate({ difficulty })` accepts `easy`, `medium`,
-`hard` and `expert` (`TARGET_DIFFICULTIES`) but not `beyond`: being stuck covers
-puzzles from one step past expert to far harder, so it is not a level to aim
+`rate` can return all six. `generate({ difficulty })` accepts `easy`, `medium`,
+`hard`, `expert` and `master` (`TARGET_DIFFICULTIES`) but not `beyond`: being
+stuck covers puzzles from one step past master to far harder, so it is not a level to aim
 for. Uniqueness techniques (such as unique rectangles) and chains are left out
 on purpose; ADR-0003 says why.
 
-**A puzzle that 0.2 rated `beyond` can be rated `expert` from 0.3.0 on.** If you
-store ratings, a stored `beyond` from 0.2 may now mean `expert`. Stored `easy`,
-`medium` and `hard` ratings do not change.
+**A puzzle that 0.2 rated `beyond` can be rated `expert` from 0.3.0 on, and one
+that 0.5 rated `beyond` can be rated `master` from 0.6.0 on.** If you store
+ratings, a stored `beyond` may now mean a newer level. Stored ratings of every
+other level do not change.
 
 The difficulty is the strongest technique needed, not a sum of step scores:
 a sum needs weights nobody can justify, and cannot be explained to a solver
@@ -334,7 +336,8 @@ checked on the 63 fixed pentominoes and the 8 tilings of the 3x20 rectangle.
   product of independent binary choices the generator keeps exactly one clue per
   choice; `permutation` is always a bijection.
 - **Soundness of the sudoku techniques** (`fast-check`): over generated 4x4, 6x6
-  and 9x9 puzzles (including ones generated to `medium`, `hard` and `expert`), every
+  and 9x9 puzzles (including ones generated to `medium`, `hard`, `expert` and
+  `master`), every
   technique is asked for a step at every state the rater passes through, and
   every placement and elimination is checked against the oracle's solution. A
   solved rating must end on that solution. Each technique also has unit tests on
@@ -367,9 +370,10 @@ npm run check       # lint + typecheck + test + build, same as CI
 ## Performance
 
 Measured with `npm run bench` on a single core (Node 22). "Generate" includes
-finding a random solution and the full minimality pass. The `hard` and `expert`
-rows were measured over 100 seeds each on the same setup (`hard`: median 101
-attempts, worst 1147; `expert`: median 6, worst 74).
+finding a random solution and the full minimality pass. The `hard`, `expert`
+and `master` rows were measured over 100 seeds each on the same setup (`hard`:
+median 101 attempts, worst 1147; `expert`: median 6, worst 74; `master`: median
+11, worst 46).
 These are the values measured on that setup, not promises.
 
 | Task                                     | Time                         |
@@ -381,6 +385,7 @@ These are the values measured on that setup, not promises.
 | Generate a minimal 6x10 pentomino puzzle | ~12 ms                       |
 | Generate a 9x9 sudoku rated `hard`       | median ~0.3 s, worst a few s |
 | Generate a 9x9 sudoku rated `expert`     | median ~20 ms, worst ~0.2 s  |
+| Generate a 9x9 sudoku rated `master`     | median ~45 ms, worst ~0.25 s |
 
 Generation cost is dominated by the number of clues times the cost of one
 bounded solve. Keeping that solve cheap is the engine's job, which is why the

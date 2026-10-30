@@ -163,13 +163,13 @@ export const english: Locale = {
         const x = symbol(detail.linked);
         const [a, b] = detail.cells;
         const [p, q] = detail.ends;
-        return `${label}: ${candidatesEn(a)} and ${candidatesEn(b)}, and in ${unitEn(detail.link)} ${x} can only go in ${cellEn(p)} and ${cellEn(q)}, which see them, so one of ${cellEn(a.cell)} and ${cellEn(b.cell)} is ${v} and ${v} leaves the cells that see both`;
+        return `${label}: ${candidatesEn(a)} and ${candidatesEn(b)}, and in ${unitEn(detail.link)} ${x} can only go in ${cellEn(p)} and ${cellEn(q)}, which see ${cellEn(a.cell)} and ${cellEn(b.cell)} in turn, so one of ${cellEn(a.cell)} and ${cellEn(b.cell)} is ${v} and ${v} leaves the cells that see both`;
       }
       case 'restricted cells': {
         const v = symbol(detail.value);
         const held = detail.cells.flatMap((cell) => cell.values);
         const all = [...new Set(held)].sort((x, y) => x - y);
-        return `${label}: ${listEn(detail.cells.map(candidatesEn))} hold only ${listEn(values(all))} between them, and every value but ${v} sits in cells that all see each other, so one of them is ${v} and ${v} leaves the cells that see every cell holding ${v}`;
+        return `${label}: ${listEn(detail.cells.map(candidatesEn))} hold only ${listEn(values(all))} between them, and every value but ${v} sits in cells that all see each other, so one of the cells holding ${v} is ${v} and ${v} leaves the cells that see all of those`;
       }
     }
   },
@@ -276,12 +276,12 @@ export const japanese: Locale = {
         const x = symbol(detail.linked);
         const [a, b] = detail.cells;
         const [p, q] = detail.ends;
-        return `${name}：${candidatesJa(a)}と ${candidatesJa(b)}があり、${unitJa(detail.link)}で ${x} が入るのは ${cellJa(p)} か ${cellJa(q)} だけで、それぞれが2つのマスから見えるので、${cellJa(a.cell)} か ${cellJa(b.cell)} のどちらかが ${v} になり、その両方から見えるマスから ${v} が消える`;
+        return `${name}：${candidatesJa(a)}と ${candidatesJa(b)}があり、${unitJa(detail.link)}で ${x} が入るのは ${cellJa(p)} か ${cellJa(q)} だけで、${cellJa(p)} は ${cellJa(a.cell)} から、${cellJa(q)} は ${cellJa(b.cell)} から見えるので、${cellJa(a.cell)} か ${cellJa(b.cell)} のどちらかが ${v} になり、その両方から見えるマスから ${v} が消える`;
       }
       case 'restricted cells': {
         const v = symbol(detail.value);
         const all = [...new Set(detail.cells.flatMap((cell) => cell.values))].sort((x, y) => x - y);
-        return `${name}：${listJa(detail.cells.map(candidatesJa))}には合わせて ${listJa(values(all))} しか入らず、${v} 以外の数字はどれも互いに見えるマスにしか無いので、このどれかが ${v} になり、${v} の入りうるマスすべてから見えるマスから ${v} が消える`;
+        return `${name}：${listJa(detail.cells.map(candidatesJa))}には合わせて ${listJa(values(all))} しか入らず、${v} 以外の数字はどれも互いに見えるマスにしか無いので、${v} の入りうるマスのどれかが ${v} になり、そのすべてから見えるマスから ${v} が消える`;
       }
     }
   },

@@ -22,6 +22,12 @@ import {
   xWing,
   xyWing,
   xyzWing,
+  jellyfish,
+  finnedXWing,
+  finnedSwordfish,
+  emptyRectangle,
+  wWing,
+  wxyzWing,
 } from '../../../src/puzzles/sudoku/techniques/index.js';
 import { combinations } from '../../../src/puzzles/sudoku/techniques/subsets.js';
 
@@ -73,7 +79,7 @@ describe('techniques on an empty grid', () => {
   });
 
   it('are listed weakest first, and levels never decrease', () => {
-    const order = ['easy', 'medium', 'hard', 'expert'];
+    const order = ['easy', 'medium', 'hard', 'expert', 'master'];
     const levels = TECHNIQUES.map((technique) => order.indexOf(technique.level));
     expect(levels).toEqual([...levels].sort((a, b) => a - b));
     expect(TECHNIQUES.map((technique) => technique.name)).toEqual([
@@ -93,6 +99,12 @@ describe('techniques on an empty grid', () => {
       '2-string kite',
       'xy-wing',
       'xyz-wing',
+      'jellyfish',
+      'finned x-wing',
+      'finned swordfish',
+      'empty rectangle',
+      'w-wing',
+      'wxyz-wing',
     ]);
   });
 });
@@ -509,6 +521,184 @@ describe('xyzWing', () => {
     expect(step?.reason).toBe(
       'XYZ-wing: pivot r1c1 (1, 2 or 3) with pincers r1c2 (1 or 3) and r4c1 (2 or 3), so one of the three is 3 and 3 leaves the cells that see all three',
     );
+  });
+});
+
+describe('jellyfish', () => {
+  it('finds a symbol locked to four columns in four rows when no smaller fish is', () => {
+    const candidates = empty(nine);
+    for (const r of [0, 2, 4, 6]) {
+      remove(
+        candidates,
+        row0.filter((c) => ![1, 3, 5, 7].includes(c)).map((c) => r * 9 + c),
+        4,
+      );
+    }
+    const grid = state(nine, candidates);
+    expect(xWing(grid)).toBeUndefined();
+    expect(swordfish(grid)).toBeUndefined();
+    const step = jellyfish(grid);
+    expect(step?.eliminations).toHaveLength(20);
+    expect(
+      step?.eliminations.every(({ row, col }) => col % 2 === 1 && ![0, 2, 4, 6].includes(row)),
+    ).toBe(true);
+    expect(step?.reason).toBe(
+      'Jellyfish: 4 in rows 1, 3, 5 and 7 can only go in columns 2, 4, 6 and 8, so 4 leaves the rest of those columns',
+    );
+  });
+});
+
+describe('finnedXWing', () => {
+  it('removes the symbol only where the fish and the fin agree', () => {
+    const candidates = empty(nine);
+    for (const r of [1, 6]) {
+      remove(
+        candidates,
+        row0.filter((c) => c !== 2 && c !== 7 && !(r === 1 && c === 8)).map((c) => r * 9 + c),
+        4,
+      );
+    }
+    const grid = state(nine, candidates);
+    expect(xWing(grid)).toBeUndefined();
+    const step = finnedXWing(grid);
+    expect(step?.eliminations).toEqual([
+      { row: 0, col: 7, value: 4 },
+      { row: 2, col: 7, value: 4 },
+    ]);
+    expect(step?.reason).toBe(
+      'Finned X-wing: 4 in rows 2 and 7 can only go in columns 3 and 8 or in the fin r2c9, so 4 leaves the cells of those columns that see the fin',
+    );
+  });
+
+  it('ignores fins that are not in one box', () => {
+    const candidates = empty(nine);
+    for (const r of [1, 6]) {
+      remove(
+        candidates,
+        row0
+          .filter((c) => c !== 2 && c !== 7 && !(r === 1 && c === 8) && !(r === 6 && c === 0))
+          .map((c) => r * 9 + c),
+        4,
+      );
+    }
+    expect(finnedXWing(state(nine, candidates))).toBeUndefined();
+  });
+});
+
+describe('finnedSwordfish', () => {
+  it('works like a finned x-wing with three rows', () => {
+    const candidates = empty(nine);
+    for (const r of [0, 4, 8]) {
+      remove(
+        candidates,
+        row0.filter((c) => ![1, 4, 7].includes(c) && !(r === 0 && c === 8)).map((c) => r * 9 + c),
+        4,
+      );
+    }
+    const grid = state(nine, candidates);
+    expect(swordfish(grid)).toBeUndefined();
+    expect(finnedXWing(grid)).toBeUndefined();
+    const step = finnedSwordfish(grid);
+    expect(step?.eliminations).toEqual([
+      { row: 1, col: 7, value: 4 },
+      { row: 2, col: 7, value: 4 },
+    ]);
+  });
+});
+
+describe('emptyRectangle', () => {
+  it('clears the cell that would leave the box no place', () => {
+    const candidates = empty(nine);
+    remove(candidates, [30, 31, 48, 49], 3);
+    remove(
+      candidates,
+      row0.filter((r) => r !== 4 && r !== 7).map((r) => r * 9 + 8),
+      3,
+    );
+    const step = emptyRectangle(state(nine, candidates));
+    expect(step?.eliminations).toEqual([{ row: 7, col: 5, value: 3 }]);
+    expect(step?.reason).toBe(
+      'Empty rectangle: in box 5, 3 can only go in row 5 or column 6, and in column 9 only in r5c9 and r8c9, so if r8c6 were 3, box 5 would have no place for 3: 3 leaves r8c6',
+    );
+  });
+
+  it('works with a row as the link', () => {
+    const candidates = empty(nine);
+    remove(candidates, [30, 31, 48, 49], 3);
+    remove(
+      candidates,
+      row0.filter((c) => c !== 5 && c !== 0).map((c) => 72 + c),
+      3,
+    );
+    expect(emptyRectangle(state(nine, candidates))?.eliminations).toEqual([
+      { row: 4, col: 0, value: 3 },
+    ]);
+  });
+
+  it('ignores a box where the symbol is in one line only', () => {
+    const candidates = empty(nine);
+    remove(candidates, [30, 31, 32, 48, 49, 50], 3);
+    remove(
+      candidates,
+      row0.filter((r) => r !== 4 && r !== 7).map((r) => r * 9 + 8),
+      3,
+    );
+    expect(emptyRectangle(state(nine, candidates))).toBeUndefined();
+  });
+});
+
+describe('wWing', () => {
+  it('joins two equal pairs through a strong link', () => {
+    const candidates = empty(nine);
+    candidates[0] = bitsOf([1, 2]);
+    candidates[80] = bitsOf([1, 2]);
+    remove(
+      candidates,
+      row0.filter((c) => c !== 0 && c !== 8).map((c) => 36 + c),
+      1,
+    );
+    const step = wWing(state(nine, candidates));
+    expect(step?.eliminations).toEqual([
+      { row: 0, col: 8, value: 2 },
+      { row: 8, col: 0, value: 2 },
+    ]);
+    expect(step?.reason).toBe(
+      'W-wing: r1c1 (1 or 2) and r9c9 (1 or 2), and in row 5 1 can only go in r5c1 and r5c9, which see r1c1 and r9c9 in turn, so one of r1c1 and r9c9 is 2 and 2 leaves the cells that see both',
+    );
+  });
+
+  it('ignores pairs without a link between them', () => {
+    const candidates = empty(nine);
+    candidates[0] = bitsOf([1, 2]);
+    candidates[80] = bitsOf([1, 2]);
+    expect(wWing(state(nine, candidates))).toBeUndefined();
+  });
+});
+
+describe('wxyzWing', () => {
+  it('removes the one unrestricted symbol from cells that see all its places', () => {
+    const candidates = empty(nine);
+    candidates[0] = bitsOf([1, 2, 3]);
+    candidates[1] = bitsOf([1, 4]);
+    candidates[2] = bitsOf([2, 4]);
+    candidates[27] = bitsOf([3, 4]);
+    const grid = state(nine, candidates);
+    expect(xyzWing(grid)).toBeUndefined();
+    const step = wxyzWing(grid);
+    expect(step?.eliminations).toEqual([
+      { row: 1, col: 0, value: 4 },
+      { row: 2, col: 0, value: 4 },
+    ]);
+  });
+
+  it('ignores four cells where two symbols are unrestricted', () => {
+    const candidates = empty(nine);
+    // 1 and 4 each sit in r1c2 and r4c1, which do not see each other.
+    candidates[0] = bitsOf([2, 3]);
+    candidates[1] = bitsOf([1, 4]);
+    candidates[2] = bitsOf([2, 3]);
+    candidates[27] = bitsOf([1, 4]);
+    expect(wxyzWing(state(nine, candidates))).toBeUndefined();
   });
 });
 

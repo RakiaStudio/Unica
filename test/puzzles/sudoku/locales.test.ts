@@ -23,6 +23,12 @@ import {
   xyzWing,
   hiddenSingle,
   hiddenTriple,
+  jellyfish,
+  finnedXWing,
+  finnedSwordfish,
+  emptyRectangle,
+  wWing,
+  wxyzWing,
 } from '../../../src/puzzles/sudoku/techniques/index.js';
 
 /**
@@ -141,6 +147,56 @@ function samples(): Step[] {
   c[1] = bitsOf([1, 3]);
   c[27] = bitsOf([2, 3]);
   steps.push(found(xyzWing(state(c))));
+  c = empty();
+  for (const r of [0, 2, 4, 6]) {
+    remove(
+      c,
+      row0.filter((x) => ![1, 3, 5, 7].includes(x)).map((x) => r * 9 + x),
+      4,
+    );
+  }
+  steps.push(found(jellyfish(state(c))));
+  c = empty();
+  for (const r of [1, 6]) {
+    remove(
+      c,
+      row0.filter((x) => x !== 2 && x !== 7 && !(r === 1 && x === 8)).map((x) => r * 9 + x),
+      4,
+    );
+  }
+  steps.push(found(finnedXWing(state(c))));
+  c = empty();
+  for (const r of [0, 4, 8]) {
+    remove(
+      c,
+      row0.filter((x) => ![1, 4, 7].includes(x) && !(r === 0 && x === 8)).map((x) => r * 9 + x),
+      4,
+    );
+  }
+  steps.push(found(finnedSwordfish(state(c))));
+  c = empty();
+  remove(c, [30, 31, 48, 49], 3);
+  remove(
+    c,
+    row0.filter((r) => r !== 4 && r !== 7).map((r) => r * 9 + 8),
+    3,
+  );
+  steps.push(found(emptyRectangle(state(c))));
+  c = empty();
+  c[0] = bitsOf([1, 2]);
+  c[80] = bitsOf([1, 2]);
+  remove(
+    c,
+    row0.filter((x) => x !== 0 && x !== 8).map((x) => 36 + x),
+    1,
+  );
+  steps.push(found(wWing(state(c))));
+  c = empty();
+  c[0] = bitsOf([1, 2, 3]);
+  c[1] = bitsOf([1, 4]);
+  c[2] = bitsOf([2, 4]);
+  c[27] = bitsOf([3, 4]);
+  steps.push(found(wxyzWing(state(c))));
   return steps;
 }
 
@@ -182,6 +238,12 @@ describe('japanese', () => {
       '2-string kite：5 は1行目と1列目でそれぞれ2か所にしか入らず、ブロック1でつながっているので、1行8列 か 7行1列 のどちらかが 5 になり、その両方から見えるマスから 5 が消える',
       'XY-wing：中心の 1行1列（1 か 2）と 1行5列（1 か 3）、4行1列（2 か 3）から、1行5列 か 4行1列 のどちらかが 3 になり、その両方から見えるマスから 3 が消える',
       'XYZ-wing：中心の 1行1列（1、2 か 3）と 1行2列（1 か 3）、4行1列（2 か 3）から、この3マスのどれかが 3 になり、3マスすべてから見えるマスから 3 が消える',
+      'Jellyfish：4 は 1行目、3行目、5行目、7行目で 2列目、4列目、6列目、8列目にしか入らないので、4 はそれらの列のほかのマスから消える',
+      'Finned X-wing：4 は 2行目、7行目で 3列目、8列目か、ひれの 2行9列 にしか入らないので、それらの列のうちひれから見えるマスから 4 が消える',
+      'Finned Swordfish：4 は 1行目、5行目、9行目で 2列目、5列目、8列目か、ひれの 1行9列 にしか入らないので、それらの列のうちひれから見えるマスから 4 が消える',
+      'Empty rectangle：ブロック5の 3 は5行目か6列目にしか入らず、9列目では 5行9列 か 8行9列 にしか入らないので、8行6列 が 3 だとブロック5に 3 の入る場所が無くなる。8行6列 から 3 が消える',
+      'W-wing：1行1列（1 か 2）と 9行9列（1 か 2）があり、5行目で 1 が入るのは 5行1列 か 5行9列 だけで、5行1列 は 1行1列 から、5行9列 は 9行9列 から見えるので、1行1列 か 9行9列 のどちらかが 2 になり、その両方から見えるマスから 2 が消える',
+      'WXYZ-wing：1行1列（1、2 か 3）、1行2列（1 か 4）、1行3列（2 か 4）、4行1列（3 か 4）には合わせて 1、2、3、4 しか入らず、4 以外の数字はどれも互いに見えるマスにしか無いので、4 の入りうるマスのどれかが 4 になり、そのすべてから見えるマスから 4 が消える',
     ]);
   });
 
@@ -216,6 +278,12 @@ describe('japanese', () => {
       '2-string kite',
       'XY-wing',
       'XYZ-wing',
+      'Jellyfish',
+      'Finned X-wing',
+      'Finned Swordfish',
+      'Empty rectangle',
+      'W-wing',
+      'WXYZ-wing',
     ]);
     expect(japanese.difficulty('beyond')).toBe('判定外');
     expect(japanese.summary({ solved: false, difficulty: 'beyond', hardest: undefined })).toMatch(
