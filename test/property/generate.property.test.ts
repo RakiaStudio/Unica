@@ -69,17 +69,21 @@ describe('generate: properties', () => {
     );
   });
 
-  it('a generated pentomino puzzle on 3x20 is unique and minimal', () => {
-    const tiling = polyominoTiling({ width: 20, height: 3, pieces: PENTOMINOES });
-    fc.assert(
-      fc.property(seedArb, (seed) => {
-        const puzzle = tiling.generate({ seed });
-        expect(countPentominoTilings(puzzle.text.puzzle)).toBe(1);
-        expect(isMinimal(tiling.problem(), puzzle.clues)).toBe(true);
-      }),
-      { numRuns: 20 },
-    );
-  });
+  // 20 runs in four tests of 5: one long synchronous test can starve the
+  // vitest worker's RPC on CI ("Timeout calling onTaskUpdate").
+  for (const batch of [1, 2, 3, 4]) {
+    it(`a generated pentomino puzzle on 3x20 is unique and minimal (batch ${String(batch)})`, () => {
+      const tiling = polyominoTiling({ width: 20, height: 3, pieces: PENTOMINOES });
+      fc.assert(
+        fc.property(seedArb, (seed) => {
+          const puzzle = tiling.generate({ seed });
+          expect(countPentominoTilings(puzzle.text.puzzle)).toBe(1);
+          expect(isMinimal(tiling.problem(), puzzle.clues)).toBe(true);
+        }),
+        { numRuns: 5 },
+      );
+    });
+  }
 
   it('on a product of independent binary choices, every clue is necessary', () => {
     // k columns, each coverable by exactly two rows: 2^k solutions. The only
