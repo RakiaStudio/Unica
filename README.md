@@ -21,10 +21,10 @@ document explains how each one is guaranteed rather than hoped for.
 Exact cover solvers are a solved problem in JavaScript: `dancing-links`,
 `@algorithm.ts/dlx` and `dlxlib` all implement Knuth's Algorithm X, and the
 first of them is fast and well maintained. What the ecosystem lacks is the layer
-above the solver. Puzzle _generators_ are plentiful for sudoku and scarce for
-everything else, and a surprising number of them either do not check uniqueness
-at all or check it only after the fact, per puzzle type, with no stated
-guarantee.
+above the solver. Puzzle generators are plentiful for sudoku, and some of them
+do produce puzzles with a unique solution. But every one found while building
+unica was specific to sudoku. None stated uniqueness and minimality as
+guarantees over a shared exact cover form that other puzzles could use as well.
 
 unica is that missing layer. It does not implement a solver (see
 [ADR-0001](./docs/adr/0001-dancing-links.md) for why). It implements the three
@@ -138,7 +138,7 @@ the same.
 Hard puzzles are rare (about 1 in 300 minimal 9x9 puzzles), so:
 
 - `generate({ difficulty })` throws `ExactCoverError` when `maxAttempts`
-  (default 2000) runs out. For `hard` we expect that about 0.1% of the time;
+  (default 2000) runs out. For `hard` this is expected to happen about 0.1% of the time;
   callers should catch it, for example by retrying with another seed.
 - `hard` generation can take seconds (see [Performance](#performance)). In an
   app with a UI, run it off the main thread, for example in a Web Worker.
@@ -369,7 +369,7 @@ Measured with `npm run bench` on a single core (Node 22). "Generate" includes
 finding a random solution and the full minimality pass. The `hard` and `expert`
 rows were measured over 100 seeds each on the same setup (`hard`: median 101
 attempts, worst 1147; `expert`: median 6, worst 74).
-These are the values we measured on that setup, not promises.
+These are the values measured on that setup, not promises.
 
 | Task                                     | Time                         |
 | ---------------------------------------- | ---------------------------- |
@@ -388,8 +388,9 @@ engine is a dependency and not a rewrite.
 ## Roadmap
 
 - **Playable demo** on GitHub Pages, generating in the browser.
-- **More reductions**: N-queens, kakuro, and other puzzles with a clean exact
-  cover formulation.
+- **More reductions**: N-queens and other puzzles with a clean exact cover
+  formulation, and ones like kakuro that need extra work to keep crossing sums
+  consistent.
 - **Alternative engines** behind `ExactCoverSolver` (WebAssembly, workers) once a
   workload needs them.
 
@@ -401,3 +402,8 @@ releases are managed with Changesets and published with npm provenance.
 ## License
 
 MIT. Copyright (c) 2026 RakiaStudio.
+
+## Trademarks
+
+"Sudoku" (数独) and "Kakuro" (カックロ) are registered trademarks of Nikoli Co.,
+Ltd. in Japan. unica is not affiliated with Nikoli.

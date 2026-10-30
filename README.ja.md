@@ -12,7 +12,7 @@ English: [README.md](./README.md)
 
 ## なぜ作ったか
 
-exact cover の「解く」側は JavaScript でも決着が付いています。`dancing-links`、`@algorithm.ts/dlx`、`dlxlib` はいずれも Knuth の Algorithm X の実装で、特に前者は速く、よく保守されています。足りないのはその一段上、**出題する側**です。生成器は数独向けには多くありますが、それ以外のパズル向けにはほとんどなく、しかも「唯一性を検証していない」「パズルごとの後付けの検証で、保証として明文化されていない」ものが目立ちます。
+exact cover の「解く」側は JavaScript でも決着が付いています。`dancing-links`、`@algorithm.ts/dlx`、`dlxlib` はいずれも Knuth の Algorithm X の実装で、特に前者は速く、よく保守されています。足りないのはその一段上、**出題する側**です。生成器は数独向けには多く、唯一解の問題を作るものもあります。ただ、調べた範囲では、どれも数独専用でした。数独以外のパズルにも同じ形で使え、「唯一解」と「極小」を保証として明文化した部品は見当たりませんでした。
 
 unica はその足りない層です。ソルバーは実装しません（理由は [ADR-0001](./docs/adr/0001-dancing-links.md)）。生成器が正しくやらなければならず、ソルバーには肩代わりできない3つだけを実装しています。
 
@@ -276,7 +276,7 @@ npm run check       # lint + typecheck + test + build。CI と同じ
 ## ロードマップ
 
 - **遊べるデモ**（GitHub Pages、ブラウザ内で生成）。
-- **変換の追加**：N クイーン、カックロなど exact cover にきれいに落ちるもの。
+- **変換の追加**：N クイーンなど exact cover にきれいに落ちるものと、カックロのように一工夫いるもの（交わる2本で数字をそろえる）。
 - **代替エンジン**（WebAssembly、worker）を `ExactCoverSolver` の裏に、必要になったら。
 
 ## 貢献
@@ -286,3 +286,7 @@ npm run check       # lint + typecheck + test + build。CI と同じ
 ## ライセンス
 
 MIT. Copyright (c) 2026 RakiaStudio.
+
+## 商標
+
+「数独」「カックロ」は株式会社ニコリの登録商標です。unica は株式会社ニコリとは関係がありません。
