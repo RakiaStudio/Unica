@@ -261,6 +261,32 @@ check(
 );
 check('README: Knuth example needs no clues', generate(knuth, { seed: 1 }).clues.length === 0);
 
+// The difficulty rating (0.2.0 and later). Royle's 17-clue puzzle has the
+// fewest clues possible and is solved by singles alone; its answer is known
+// independently, and the oracle confirms it is the only one.
+if (typeof s.rate === 'function') {
+  const seventeen =
+    '000000010400000000020000000000050407008000300001090000300400200050100000000806000';
+  const answer =
+    '693784512487512936125963874932651487568247391741398625319475268856129743274836159';
+  const rating = s.rate(seventeen);
+  const filled = [...seventeen].map(Number);
+  for (const step of rating.steps) {
+    for (const { row, col, value } of step.placements) filled[row * 9 + col] = value;
+  }
+  check(
+    'rating: the 17-clue puzzle is unique by the oracle',
+    countSudoku(parseGrid(seventeen.replace(/0/g, '.'), 9), 3, 3) === 1,
+  );
+  check(
+    'rating: the 17-clue puzzle rates easy and is solved to the known answer',
+    rating.solved && rating.difficulty === 'easy' && filled.join('') === answer,
+    `${rating.difficulty}, ${String(rating.steps.length)} steps`,
+  );
+} else {
+  console.log(`skip rating checks: ${installed} has no rate()`);
+}
+
 // 3. Unique and minimal, by the oracles.
 const seeds = (count, prefix) => Array.from({ length: count }, (_, i) => `${prefix}-${i}`);
 

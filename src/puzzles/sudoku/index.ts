@@ -25,11 +25,18 @@ import type { Seed } from '../../core/random.js';
 import type { ExactCoverSolver } from '../../core/solver.js';
 import { geometry } from './candidates.js';
 import { explainRating, rateValues, type Rating } from './rate.js';
-import type { Difficulty } from './techniques/index.js';
+import { TARGET_DIFFICULTIES, type TargetDifficulty } from './techniques/index.js';
 
 export type { CellValue, Step, TechniqueName } from './candidates.js';
 export type { Rating } from './rate.js';
-export { DIFFICULTIES, TECHNIQUES, type Difficulty, type Technique } from './techniques/index.js';
+export {
+  DIFFICULTIES,
+  TARGET_DIFFICULTIES,
+  TECHNIQUES,
+  type Difficulty,
+  type TargetDifficulty,
+  type Technique,
+} from './techniques/index.js';
 
 export interface SudokuPlacement {
   /** 0-based row. */
@@ -60,9 +67,11 @@ export interface SudokuGenerateOptions extends GenerateOptions {
   /**
    * Keep generating until `rate` gives this difficulty. Attempt 1 uses `seed`;
    * attempt k uses the seed `` `${seed}:${k}` ``. The same seed therefore gives
-   * the same puzzle, and the returned `seed` reproduces it directly.
+   * the same puzzle, and the returned `seed` reproduces it directly. Ratings
+   * can change when a later version adds techniques, so this holds within one
+   * version of the package.
    */
-  readonly difficulty: Difficulty;
+  readonly difficulty: TargetDifficulty;
   /**
    * Give up after this many attempts with an `ExactCoverError`. Default 2000:
    * about 1 in 300 generated 9x9 puzzles rates `hard`, so 2000 attempts find
@@ -230,6 +239,11 @@ export function sudoku(options: SudokuOptions = {}): Sudoku {
   ): SudokuGenerated | SudokuRatedPuzzle {
     if (!('difficulty' in options)) return generateBasic(options);
     const { difficulty, maxAttempts = 2000, ...rest } = options;
+    if (!TARGET_DIFFICULTIES.includes(difficulty)) {
+      throw new ExactCoverError(
+        `difficulty must be one of ${TARGET_DIFFICULTIES.join(', ')}, got ${difficulty}`,
+      );
+    }
     if (!Number.isInteger(maxAttempts) || maxAttempts < 1) {
       throw new ExactCoverError(
         `maxAttempts must be a positive integer, got ${String(maxAttempts)}`,

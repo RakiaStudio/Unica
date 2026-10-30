@@ -111,6 +111,10 @@ s.explain(puzzle.text.puzzle);
 | `hard`     | also needs a naked triple, hidden triple or x-wing              |
 | `beyond`   | these techniques get stuck (a generated puzzle is still unique) |
 
+`rate` can return all four. `generate({ difficulty })` accepts `easy`, `medium`
+and `hard` (`TARGET_DIFFICULTIES`) but not `beyond`: being stuck covers puzzles
+from one step past medium to far harder, so it is not a level to aim for.
+
 The difficulty is the strongest technique needed, not a sum of step scores:
 a sum needs weights nobody can justify, and cannot be explained to a solver
 ([ADR-0003](./docs/adr/0003-difficulty-by-hardest-technique.md)). Clue count and
@@ -118,7 +122,10 @@ difficulty are separate things: the 17-clue puzzle in the test suite has the
 fewest clues possible and rates `easy`.
 
 Generating to a difficulty retries with seeds derived from yours (attempt `k`
-uses `` `${seed}:${k}` ``), so the same seed always gives the same puzzle.
+uses `` `${seed}:${k}` ``), so the same seed always gives the same puzzle
+within one version of the package. A later version that adds techniques can
+rate the same puzzle differently, and then the same seed may land on another
+puzzle; plain `generate` without a difficulty is not affected.
 Hard puzzles are rare (about 1 in 300 minimal 9x9 puzzles), so:
 
 - `generate({ difficulty })` throws `ExactCoverError` when `maxAttempts`
@@ -213,7 +220,9 @@ tests over random seeds, but it is true by the argument above, not by the tests.
 
 Every call to `generate` is driven by a seeded PRNG (sfc32) and reports the seed
 it used. The same problem and seed always produce the same puzzle. A bug report
-is a seed.
+is a seed. For sudoku generated to a difficulty, the same holds within one
+version: the rating decides which attempt is kept, and a version with more
+techniques may rate differently.
 
 ## Architecture
 
