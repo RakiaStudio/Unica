@@ -1,5 +1,18 @@
 # @rakiastudio/unica
 
+## 0.2.0
+
+### Minor Changes
+
+- 1960f2b: Rate sudoku difficulty by the hardest human technique needed. `sudoku().rate(text)`
+  solves with naked and hidden singles, naked and hidden pairs, pointing,
+  claiming, naked and hidden triples and x-wing, tried weakest first, and returns
+  `{ solved, difficulty, hardest, steps }` with a reason for every step;
+  `explain(text)` prints them. `generate({ difficulty })` takes `easy`, `medium`
+  or `hard`, retries with derived seeds until the rating matches (reproducible
+  from the seed within one version, `maxAttempts` default 2000) and returns
+  `attempts` and `rating`. See ADR-0003.
+
 ## 0.1.1
 
 ### Patch Changes
