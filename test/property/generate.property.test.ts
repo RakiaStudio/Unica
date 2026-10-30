@@ -8,11 +8,13 @@ import {
   isMinimal,
   permutation,
   polyominoTiling,
+  queens,
   sudoku,
   type ExactCoverProblem,
 } from '../../src/index.js';
 import {
   countPentominoTilings,
+  countQueens,
   countSudokuSolutions,
   isValidSudokuSolution,
   textToGrid,
@@ -84,6 +86,18 @@ describe('generate: properties', () => {
       );
     });
   }
+
+  it('a generated N-queens puzzle is unique (oracle) and minimal', () => {
+    fc.assert(
+      fc.property(seedArb, fc.constantFrom(5, 6, 8, 10), (seed, n) => {
+        const board = queens({ n });
+        const puzzle = board.generate({ seed });
+        expect(countQueens(puzzle.text.puzzle, n)).toBe(1);
+        expect(isMinimal(board.problem(), puzzle.clues)).toBe(true);
+      }),
+      { numRuns: 30 },
+    );
+  });
 
   it('on a product of independent binary choices, every clue is necessary', () => {
     // k columns, each coverable by exactly two rows: 2^k solutions. The only

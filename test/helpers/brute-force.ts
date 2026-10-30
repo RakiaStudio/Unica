@@ -319,3 +319,51 @@ export function countPentominoTilings(text: string, limit = 2): number {
   if (fillable()) search();
   return count;
 }
+
+/**
+ * Count the ways to finish an N-queens board given as text (`Q` for a queen,
+ * `.` for an empty square, one line per row), stopping at `limit`. Fills the
+ * rows top to bottom, one queen per row, keeping the queens already given.
+ * Returns 0 when the given queens attack each other or a row has two.
+ */
+export function countQueens(text: string, n: number, limit = 2): number {
+  const chars = Array.from(text.replace(/\s+/g, ''));
+  const given: (number | undefined)[] = Array.from({ length: n }, () => undefined);
+  for (let r = 0; r < n; r++) {
+    for (let c = 0; c < n; c++) {
+      if (chars[r * n + c] !== 'Q') continue;
+      if (given[r] !== undefined) return 0;
+      given[r] = c;
+    }
+  }
+  const cols: number[] = [];
+  const attacks = (r: number, c: number): boolean =>
+    cols.some((other, row) => other === c || Math.abs(other - c) === r - row);
+  for (let r = 0; r < n; r++) {
+    const c = given[r];
+    if (c === undefined) continue;
+    for (let s = 0; s < n; s++) {
+      const d = given[s];
+      if (s !== r && d !== undefined && (d === c || Math.abs(d - c) === Math.abs(s - r))) return 0;
+    }
+  }
+  let count = 0;
+  const place = (r: number): void => {
+    if (count >= limit) return;
+    if (r === n) {
+      count++;
+      return;
+    }
+    const fixed = given[r];
+    for (let c = 0; c < n; c++) {
+      if (fixed !== undefined && c !== fixed) continue;
+      if (attacks(r, c)) continue;
+      cols.push(c);
+      place(r + 1);
+      cols.pop();
+      if (count >= limit) return;
+    }
+  };
+  place(0);
+  return count;
+}

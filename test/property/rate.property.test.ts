@@ -1,5 +1,5 @@
 import fc from 'fast-check';
-import { describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it } from 'vitest';
 import { TECHNIQUES, sudoku, type Step } from '../../src/index.js';
 import {
   applyStep,
@@ -73,6 +73,18 @@ function batches(total: number, size: number): number[] {
   return Array.from({ length: total / size }, (_, i) => i + 1);
 }
 
+/**
+ * Synchronous tests run back to back never give the worker a macrotask turn,
+ * so splitting alone does not let the RPC reply in. A timer before each test
+ * does: the worker reads its messages between batches.
+ */
+beforeEach(
+  () =>
+    new Promise<void>((resolve) => {
+      setTimeout(resolve, 0);
+    }),
+);
+
 function expectSound(grid: CandidateGrid, step: Step, solution: readonly number[]): void {
   const { n } = grid.geometry;
   for (const { row, col, value } of step.placements) {
@@ -143,6 +155,18 @@ describe('rating: soundness against the oracle', () => {
       fc.assert(
         fc.property(seedArb, (seed) => {
           walk(3, 3, s.generate({ seed, difficulty: 'expert' }).text.puzzle);
+        }),
+        { numRuns: 5 },
+      );
+    });
+  }
+
+  for (const batch of batches(30, 5)) {
+    it(`on generated 9x9 puzzles that need master techniques (batch ${String(batch)})`, () => {
+      const s = sudoku();
+      fc.assert(
+        fc.property(seedArb, (seed) => {
+          walk(3, 3, s.generate({ seed, difficulty: 'master' }).text.puzzle);
         }),
         { numRuns: 5 },
       );

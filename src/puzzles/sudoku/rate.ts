@@ -64,7 +64,13 @@ export function rateValues(shape: Geometry, values: readonly number[]): Rating {
   const solved = isSolved(grid) && isConsistent(grid);
   const hardest = hardestIndex < 0 ? undefined : at(TECHNIQUES, hardestIndex);
   const uses: Partial<Record<TechniqueName, number>> = {};
-  const levels: Record<TargetDifficulty, number> = { easy: 0, medium: 0, hard: 0, expert: 0 };
+  const levels: Record<TargetDifficulty, number> = {
+    easy: 0,
+    medium: 0,
+    hard: 0,
+    expert: 0,
+    master: 0,
+  };
   for (const { technique } of steps) {
     uses[technique] = (uses[technique] ?? 0) + 1;
     const level = TECHNIQUES.find(({ name }) => name === technique)?.level;

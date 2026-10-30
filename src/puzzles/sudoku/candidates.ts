@@ -136,6 +136,52 @@ export type StepDetail =
       readonly value: number;
       readonly pivot: CellCandidates;
       readonly pincers: readonly [CellCandidates, CellCandidates];
+    }
+  | {
+      /**
+       * In `bases`, `value` can only go in `covers` or in `fins`, which all lie
+       * in one box: either a fin holds `value` or the fish does.
+       */
+      readonly pattern: 'finned fish';
+      readonly value: number;
+      readonly bases: readonly UnitRef[];
+      readonly covers: readonly UnitRef[];
+      readonly fins: readonly CellRef[];
+    }
+  | {
+      /**
+       * In `box`, `value` can only go in `row` or `column`; in `link` it can
+       * only go in `ends`, the first of which shares a line with the box.
+       */
+      readonly pattern: 'empty rectangle';
+      readonly value: number;
+      readonly box: UnitRef;
+      readonly row: UnitRef;
+      readonly column: UnitRef;
+      readonly link: UnitRef;
+      readonly ends: readonly [CellRef, CellRef];
+    }
+  | {
+      /**
+       * `cells` both hold only `linked` or `value`; in `link`, `linked` can only
+       * go in `ends`, one seeing each cell. So one of `cells` holds `value`.
+       */
+      readonly pattern: 'w-wing';
+      readonly value: number;
+      readonly linked: number;
+      readonly cells: readonly [CellCandidates, CellCandidates];
+      readonly link: UnitRef;
+      readonly ends: readonly [CellRef, CellRef];
+    }
+  | {
+      /**
+       * `cells` hold as many values between them as there are cells, and every
+       * value but `value` sits only in cells that all see each other. So one of
+       * the cells holding `value` holds it.
+       */
+      readonly pattern: 'restricted cells';
+      readonly value: number;
+      readonly cells: readonly CellCandidates[];
     };
 
 /** One deduction: what a technique found, what it was based on, and why, in one sentence. */
@@ -165,7 +211,13 @@ export type TechniqueName =
   | 'skyscraper'
   | '2-string kite'
   | 'xy-wing'
-  | 'xyz-wing';
+  | 'xyz-wing'
+  | 'jellyfish'
+  | 'finned x-wing'
+  | 'finned swordfish'
+  | 'empty rectangle'
+  | 'w-wing'
+  | 'wxyz-wing';
 
 /** Element access that names the index when it fails, instead of yielding `undefined`. */
 export function at<T>(items: readonly T[], index: number): T {

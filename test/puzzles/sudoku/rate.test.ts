@@ -35,7 +35,7 @@ describe('rate', () => {
     expect(rating.difficulty).toBe('easy');
     expect(rating.hardest).toBe('hidden single');
     expect(rating.steps).toHaveLength(81 - 17);
-    expect(rating.levels).toEqual({ easy: 64, medium: 0, hard: 0, expert: 0 });
+    expect(rating.levels).toEqual({ easy: 64, medium: 0, hard: 0, expert: 0, master: 0 });
     expect((rating.uses['naked single'] ?? 0) + (rating.uses['hidden single'] ?? 0)).toBe(64);
     expect(replay(SEVENTEEN)).toBe(SEVENTEEN_SOLUTION);
   });
@@ -49,7 +49,7 @@ describe('rate', () => {
       hardest: undefined,
       steps: [],
       uses: {},
-      levels: { easy: 0, medium: 0, hard: 0, expert: 0 },
+      levels: { easy: 0, medium: 0, hard: 0, expert: 0, master: 0 },
     });
   });
 
@@ -61,7 +61,7 @@ describe('rate', () => {
       hardest: undefined,
       steps: [],
       uses: {},
-      levels: { easy: 0, medium: 0, hard: 0, expert: 0 },
+      levels: { easy: 0, medium: 0, hard: 0, expert: 0, master: 0 },
     });
   });
 
@@ -191,7 +191,7 @@ describe('generate with a difficulty', () => {
     const options: unknown = { seed: 1, difficulty: 'beyond' };
     expect(() => {
       Reflect.apply(s.generate.bind(s), undefined, [options]);
-    }).toThrow(/difficulty must be one of easy, medium, hard, expert, got beyond/);
+    }).toThrow(/difficulty must be one of easy, medium, hard, expert, master, got beyond/);
   });
 
   it('rejects a bad maxAttempts', () => {

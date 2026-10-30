@@ -5,16 +5,22 @@
  *   two columns, and the two rows cannot use the same column. So the symbol
  *   occupies both columns within those rows, and leaves every other cell of the
  *   two columns.
- * - Swordfish (k = 3): the same with three rows whose places for the symbol all
- *   lie in three columns (each row may use two or three of them). The three
- *   rows need three placements in three distinct columns, so they use up all
- *   three columns, and the symbol leaves the rest of them.
+ * - Swordfish (k = 3) and jellyfish (k = 4): the same with k rows whose places
+ *   for the symbol all lie in k columns (each row may use two or more of
+ *   them). The k rows need k placements in k distinct columns, so they use up
+ *   all k columns, and the symbol leaves the rest of them.
+ * - Finned x-wing and finned swordfish: k rows whose places all lie in k
+ *   columns except for a few "fins", all inside one box. Either a fin holds the
+ *   symbol, or none does and the fish holds. A cell of the k columns, outside
+ *   the k rows, that is in the fins' box sees every fin, so it loses the symbol
+ *   in both cases.
  *
- * Both also hold with rows and columns swapped.
+ * All of them also hold with rows and columns swapped.
  */
 
 import {
   at,
+  cellRef,
   cellValue,
   hasCandidate,
   unitRef,
@@ -25,6 +31,9 @@ import {
 } from '../candidates.js';
 import { makeStep } from './step.js';
 import { combinations } from './subsets.js';
+
+type FishName = 'swordfish' | 'jellyfish';
+type FinnedName = 'finned x-wing' | 'finned swordfish';
 
 /** Positions (index within the line) where `value` can go, or `undefined` when placed. */
 function positions(grid: CandidateGrid, line: Unit, value: number): number[] | undefined {
@@ -76,23 +85,25 @@ function xWingAlong(
   return undefined;
 }
 
-function swordfishAlong(
+function fishAlong(
   grid: CandidateGrid,
   bases: readonly Unit[],
   covers: readonly Unit[],
   value: number,
+  size: 3 | 4,
+  technique: FishName,
 ): Step | undefined {
   const { n } = grid.geometry;
   const lines: { base: Unit; at: number[] }[] = [];
   for (const base of bases) {
     const found = positions(grid, base, value);
-    if (found !== undefined && found.length >= 2 && found.length <= 3) {
+    if (found !== undefined && found.length >= 2 && found.length <= size) {
       lines.push({ base, at: found });
     }
   }
-  for (const group of combinations(lines, 3)) {
+  for (const group of combinations(lines, size)) {
     const used = [...new Set(group.flatMap((line) => line.at))].sort((a, b) => a - b);
-    if (used.length !== 3) continue;
+    if (used.length !== size) continue;
     const baseCells = new Set(group.flatMap((line) => line.base.cells));
     const eliminations: CellValue[] = [];
     for (const cover of used.map((position) => at(covers, position))) {
@@ -105,7 +116,7 @@ function swordfishAlong(
     }
     if (eliminations.length === 0) continue;
     eliminations.sort((x, y) => x.row - y.row || x.col - y.col);
-    return makeStep('swordfish', [], eliminations, {
+    return makeStep(technique, [], eliminations, {
       pattern: 'fish',
       value,
       bases: group.map((line) => unitRef(line.base)),
@@ -115,15 +126,85 @@ function swordfishAlong(
   return undefined;
 }
 
-export function swordfish(grid: CandidateGrid): Step | undefined {
+function fish(grid: CandidateGrid, size: 3 | 4, technique: FishName): Step | undefined {
   const { n, rows, columns } = grid.geometry;
   for (let value = 1; value <= n; value++) {
     const step =
-      swordfishAlong(grid, rows, columns, value) ?? swordfishAlong(grid, columns, rows, value);
+      fishAlong(grid, rows, columns, value, size, technique) ??
+      fishAlong(grid, columns, rows, value, size, technique);
     if (step !== undefined) return step;
   }
   return undefined;
 }
+
+export const swordfish = (grid: CandidateGrid): Step | undefined => fish(grid, 3, 'swordfish');
+export const jellyfish = (grid: CandidateGrid): Step | undefined => fish(grid, 4, 'jellyfish');
+
+function finnedAlong(
+  grid: CandidateGrid,
+  bases: readonly Unit[],
+  covers: readonly Unit[],
+  value: number,
+  size: 2 | 3,
+  technique: FinnedName,
+): Step | undefined {
+  const { n, boxOf } = grid.geometry;
+  const lines: { base: Unit; at: number[] }[] = [];
+  for (const base of bases) {
+    const found = positions(grid, base, value);
+    if (found !== undefined && found.length >= 1) lines.push({ base, at: found });
+  }
+  for (const group of combinations(lines, size)) {
+    const used = [...new Set(group.flatMap((line) => line.at))].sort((a, b) => a - b);
+    if (used.length <= size) continue;
+    for (const chosen of combinations(used, size)) {
+      const inCover = new Set(chosen);
+      const fins = group.flatMap((line) =>
+        line.at
+          .filter((position) => !inCover.has(position))
+          .map((position) => at(line.base.cells, position)),
+      );
+      const box = at(boxOf, at(fins, 0));
+      if (fins.some((cell) => at(boxOf, cell) !== box)) continue;
+      const baseCells = new Set(group.flatMap((line) => line.base.cells));
+      const eliminations: CellValue[] = [];
+      for (const cover of chosen.map((position) => at(covers, position))) {
+        for (const cell of cover.cells) {
+          if (baseCells.has(cell) || at(boxOf, cell) !== box) continue;
+          if (hasCandidate(at(grid.candidates, cell), value)) {
+            eliminations.push(cellValue(n, cell, value));
+          }
+        }
+      }
+      if (eliminations.length === 0) continue;
+      eliminations.sort((x, y) => x.row - y.row || x.col - y.col);
+      return makeStep(technique, [], eliminations, {
+        pattern: 'finned fish',
+        value,
+        bases: group.map((line) => unitRef(line.base)),
+        covers: chosen.map((position) => unitRef(at(covers, position))),
+        fins: fins.sort((a, b) => a - b).map((cell) => cellRef(n, cell)),
+      });
+    }
+  }
+  return undefined;
+}
+
+function finned(grid: CandidateGrid, size: 2 | 3, technique: FinnedName): Step | undefined {
+  const { n, rows, columns } = grid.geometry;
+  for (let value = 1; value <= n; value++) {
+    const step =
+      finnedAlong(grid, rows, columns, value, size, technique) ??
+      finnedAlong(grid, columns, rows, value, size, technique);
+    if (step !== undefined) return step;
+  }
+  return undefined;
+}
+
+export const finnedXWing = (grid: CandidateGrid): Step | undefined =>
+  finned(grid, 2, 'finned x-wing');
+export const finnedSwordfish = (grid: CandidateGrid): Step | undefined =>
+  finned(grid, 3, 'finned swordfish');
 
 export function xWing(grid: CandidateGrid): Step | undefined {
   const { n, rows, columns } = grid.geometry;

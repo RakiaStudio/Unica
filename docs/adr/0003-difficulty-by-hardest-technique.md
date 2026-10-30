@@ -1,7 +1,8 @@
 # ADR-0003: Rate sudoku difficulty by the hardest technique needed
 
 Status: accepted (2026-10-29); amended for 0.3.0 (2026-10-30): the expert level
-and the rule for adding techniques.
+and the rule for adding techniques; amended for 0.6.0 (2026-10-30): the master
+level.
 
 ## Context
 
@@ -29,6 +30,7 @@ techniques, weakest first:
 | medium | naked pair, hidden pair, pointing, claiming                                              |
 | hard   | naked triple, hidden triple, x-wing                                                      |
 | expert | naked quad, hidden quad, swordfish, skyscraper, 2-string kite, xy-wing, xyz-wing (0.3.0) |
+| master | jellyfish, finned x-wing, finned swordfish, empty rectangle, w-wing, wxyz-wing (0.6.0)   |
 | beyond | none of the above finishes the puzzle                                                    |
 
 The rater tries the list from the top, applies the first step it finds, and
@@ -124,6 +126,25 @@ Within `expert` the order is subsets (naked quad, hidden quad), then fish
 (xy-wing, xyz-wing), following the pair, pointing, triple, x-wing order of the
 earlier levels. It is fixed from now on, because reordering would change the
 steps and hardest technique of expert puzzles.
+
+0.6.0 added `master` the same way. Over 5000 seeds (`m-0` to `m-4999`, plain
+`generate`), every puzzle that the published 0.5.1 rated easy, medium, hard or
+expert has the same steps, hardest technique and explanation; 382 of the 1360
+puzzles 0.5.1 rated `beyond` (28.1%) moved to `master`, and none moved anywhere
+else. On those seeds a minimal 9x9 puzzle now rates easy 41.1%, medium 18.1%,
+hard 0.46%, expert 13.1%, master 7.6% and beyond 19.6%. `compat.test.ts` also
+holds three `expert` results from 0.5.1, and a puzzle 0.5.1 rated `beyond` that
+is now `master`.
+
+Within `master` the order is fish (jellyfish, finned x-wing, finned
+swordfish), then a single-digit pattern (empty rectangle), then wings (w-wing,
+wxyz-wing), the same family order as within `expert`. WXYZ-wing here means a
+cell and three of its peers that hold four values between them, where every
+value but one sits only in cells that all see each other; xy-wing and xyz-wing
+are the two- and three-cell cases of the same argument. Each technique's
+soundness argument is in its source file, and the soundness property test
+checks every one of them against the oracle at every state of generated
+puzzles, including ones generated to `master`.
 
 ## Techniques left out on purpose
 

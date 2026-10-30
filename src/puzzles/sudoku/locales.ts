@@ -14,6 +14,7 @@ import {
   type CellCandidates,
   type CellRef,
   type Step,
+  type StepDetail,
   type TechniqueName,
   type UnitKind,
   type UnitRef,
@@ -38,6 +39,16 @@ export type LocaleName = 'en' | 'ja';
 
 const values = (items: readonly number[]): string[] => items.map(symbol);
 
+type RectangleDetail = Extract<StepDetail, { pattern: 'empty rectangle' }>;
+
+/** The cell an empty rectangle clears: the far end's line meets the box's other line. */
+function rectangleTarget({ link, ends, row, column }: RectangleDetail): CellRef {
+  const far = ends[1];
+  return link.kind === 'column'
+    ? { row: far.row, col: column.index }
+    : { row: row.index, col: far.col };
+}
+
 // ---------------------------------------------------------------------------
 // English. These sentences are the `reason` of every step, so they must not
 // change: explain output is pinned against earlier releases.
@@ -60,6 +71,12 @@ const LABELS: Readonly<Record<TechniqueName, string>> = {
   '2-string kite': '2-string kite',
   'xy-wing': 'XY-wing',
   'xyz-wing': 'XYZ-wing',
+  jellyfish: 'Jellyfish',
+  'finned x-wing': 'Finned X-wing',
+  'finned swordfish': 'Finned Swordfish',
+  'empty rectangle': 'Empty rectangle',
+  'w-wing': 'W-wing',
+  'wxyz-wing': 'WXYZ-wing',
 };
 
 const PLURAL_EN: Readonly<Record<UnitKind, string>> = {
@@ -126,11 +143,39 @@ export const english: Locale = {
         const xy = technique === 'xy-wing';
         return `${label}: pivot ${candidatesEn(detail.pivot)} with pincers ${candidatesEn(a)} and ${candidatesEn(b)}, so one of ${xy ? 'the pincers' : 'the three'} is ${v} and ${v} leaves the cells that see ${xy ? 'both pincers' : 'all three'}`;
       }
+      case 'finned fish': {
+        const v = symbol(detail.value);
+        const bases = PLURAL_EN[at(detail.bases, 0).kind];
+        const covers = PLURAL_EN[at(detail.covers, 0).kind];
+        const numbers = (units: readonly UnitRef[]): string =>
+          listEn(units.map((unit) => String(unit.index + 1)));
+        const fins = detail.fins.length === 1 ? 'the fin' : 'the fins';
+        return `${label}: ${v} in ${bases} ${numbers(detail.bases)} can only go in ${covers} ${numbers(detail.covers)} or in ${fins} ${listEn(detail.fins.map(cellEn))}, so ${v} leaves the cells of those ${covers} that see ${detail.fins.length === 1 ? 'the fin' : 'every fin'}`;
+      }
+      case 'empty rectangle': {
+        const v = symbol(detail.value);
+        const [near, far] = detail.ends;
+        const target = cellEn(rectangleTarget(detail));
+        return `${label}: in ${unitEn(detail.box)}, ${v} can only go in ${unitEn(detail.row)} or ${unitEn(detail.column)}, and in ${unitEn(detail.link)} only in ${cellEn(near)} and ${cellEn(far)}, so if ${target} were ${v}, ${unitEn(detail.box)} would have no place for ${v}: ${v} leaves ${target}`;
+      }
+      case 'w-wing': {
+        const v = symbol(detail.value);
+        const x = symbol(detail.linked);
+        const [a, b] = detail.cells;
+        const [p, q] = detail.ends;
+        return `${label}: ${candidatesEn(a)} and ${candidatesEn(b)}, and in ${unitEn(detail.link)} ${x} can only go in ${cellEn(p)} and ${cellEn(q)}, which see ${cellEn(a.cell)} and ${cellEn(b.cell)} in turn, so one of ${cellEn(a.cell)} and ${cellEn(b.cell)} is ${v} and ${v} leaves the cells that see both`;
+      }
+      case 'restricted cells': {
+        const v = symbol(detail.value);
+        const held = detail.cells.flatMap((cell) => cell.values);
+        const all = [...new Set(held)].sort((x, y) => x - y);
+        return `${label}: ${listEn(detail.cells.map(candidatesEn))} hold only ${listEn(values(all))} between them, and every value but ${v} sits in cells that all see each other, so one of the cells holding ${v} is ${v} and ${v} leaves the cells that see all of those`;
+      }
     }
   },
   summary({ solved, difficulty, hardest }) {
     if (!solved) {
-      return 'Stuck: none of the rated techniques applies here (beyond). The puzzle may still have one solution; it needs techniques stronger than xyz-wing.';
+      return 'Stuck: none of the rated techniques applies here (beyond). The puzzle may still have one solution; it needs techniques stronger than wxyz-wing.';
     }
     return hardest === undefined
       ? 'Solved: nothing to do (easy).'
@@ -148,6 +193,7 @@ const DIFFICULTIES_JA: Readonly<Record<Difficulty, string>> = {
   medium: 'ふつう',
   hard: 'むずかしい',
   expert: '上級',
+  master: '達人',
   beyond: '判定外',
 };
 
@@ -213,6 +259,29 @@ export const japanese: Locale = {
         return technique === 'xy-wing'
           ? `${opening}${cellJa(a.cell)} か ${cellJa(b.cell)} のどちらかが ${v} になり、その両方から見えるマスから ${v} が消える`
           : `${opening}この3マスのどれかが ${v} になり、3マスすべてから見えるマスから ${v} が消える`;
+      }
+      case 'finned fish': {
+        const v = symbol(detail.value);
+        const covers = KIND_JA[at(detail.covers, 0).kind];
+        return `${name}：${v} は ${listJa(detail.bases.map(unitJa))}で ${listJa(detail.covers.map(unitJa))}か、ひれの ${listJa(detail.fins.map(cellJa))} にしか入らないので、それらの${covers}のうちひれから見えるマスから ${v} が消える`;
+      }
+      case 'empty rectangle': {
+        const v = symbol(detail.value);
+        const [near, far] = detail.ends;
+        const target = cellJa(rectangleTarget(detail));
+        return `${name}：${unitJa(detail.box)}の ${v} は${unitJa(detail.row)}か${unitJa(detail.column)}にしか入らず、${unitJa(detail.link)}では ${cellJa(near)} か ${cellJa(far)} にしか入らないので、${target} が ${v} だと${unitJa(detail.box)}に ${v} の入る場所が無くなる。${target} から ${v} が消える`;
+      }
+      case 'w-wing': {
+        const v = symbol(detail.value);
+        const x = symbol(detail.linked);
+        const [a, b] = detail.cells;
+        const [p, q] = detail.ends;
+        return `${name}：${candidatesJa(a)}と ${candidatesJa(b)}があり、${unitJa(detail.link)}で ${x} が入るのは ${cellJa(p)} か ${cellJa(q)} だけで、${cellJa(p)} は ${cellJa(a.cell)} から、${cellJa(q)} は ${cellJa(b.cell)} から見えるので、${cellJa(a.cell)} か ${cellJa(b.cell)} のどちらかが ${v} になり、その両方から見えるマスから ${v} が消える`;
+      }
+      case 'restricted cells': {
+        const v = symbol(detail.value);
+        const all = [...new Set(detail.cells.flatMap((cell) => cell.values))].sort((x, y) => x - y);
+        return `${name}：${listJa(detail.cells.map(candidatesJa))}には合わせて ${listJa(values(all))} しか入らず、${v} 以外の数字はどれも互いに見えるマスにしか無いので、${v} の入りうるマスのどれかが ${v} になり、そのすべてから見えるマスから ${v} が消える`;
       }
     }
   },
