@@ -52,16 +52,26 @@ jobs:
         with:
           node-version: 22
           package-manager-cache: false
-      # A new version can take a few minutes to appear (0.1.1 took about three).
-      - name: Wait for the version on npm
+      # A new version can take a few minutes to be installable. The version
+      # shows up in `npm view` before its tarball is served: 0.4.0 was listed
+      # 17 s after publishing, but its tarball returned 404 for about 5 minutes.
+      # So wait until the tarball itself downloads, and give up after 15
+      # minutes (45 tries, 20 s apart).
+      - name: Wait for the version and its tarball on npm
         run: |
+          prefix="https://registry.npmjs.org/@rakiastudio/unica/-/unica-"
           for attempt in $(seq 1 45); do
-            if npm view "@rakiastudio/unica@$VERSION" version >/dev/null 2>&1; then
+            tarball="$(npm view "@rakiastudio/unica@$VERSION" dist.tarball 2>/dev/null || true)"
+            # Only fetch the URL we expect, never one taken blindly from metadata.
+            if [ "$tarball" = "${prefix}${VERSION}.tgz" ] \
+              && curl --fail --silent --show-error --location --max-time 30 \
+                --output /dev/null "$tarball"; then
+              echo "tarball served after $attempt tries"
               exit 0
             fi
             sleep 20
           done
-          echo "@rakiastudio/unica@$VERSION did not appear on npm within 15 minutes" >&2
+          echo "@rakiastudio/unica@$VERSION was not installable from npm within 15 minutes" >&2
           exit 1
       - name: Install from npm into an empty directory
         run: |
