@@ -319,19 +319,18 @@ All types are exported. `tsconfig` is `strict` with `noUncheckedIndexedAccess` a
 ## Testing
 
 The engine is not allowed to grade its own homework. Every uniqueness claim made
-by a test about a _generated_ sudoku is verified by an independent backtracking
-solver in `test/helpers/brute-force.ts` that shares no code with `src/`.
-Generated pentomino puzzles are checked by the engine's `isUnique` in the test
-suite, and by a separate oracle in the post-publish check
-(`scripts/verify-published.mjs`).
+by a test about a _generated_ puzzle (sudoku or pentomino) is verified by an
+independent backtracking solver in `test/helpers/brute-force.ts` that shares no
+code with `src/`. The pentomino oracle draws its own twelve shapes and is first
+checked on the 63 fixed pentominoes and the 8 tilings of the 3x20 rectangle.
 
 - **Fixtures with known answers**: Knuth's worked example (one cover, `{B, D, F}`),
   a 17-clue sudoku (17 being the proven minimum, McGuire, Tugemann and Civario,
   2012), the 63 fixed pentominoes, and the 8 tilings of the 3x20 rectangle
   (2 up to symmetry, times 4).
 - **Property tests** (`fast-check`): over random seeds, every generated sudoku
-  (4x4 and 9x9) is unique by the oracle, every generated 3x20 pentomino puzzle is
-  unique by `isUnique`, and both are minimal by `isMinimal`; `generate` is a fixed point under reduction; on a
+  (4x4 and 9x9) and every generated 3x20 pentomino puzzle is unique by the oracle
+  and minimal by `isMinimal`; `generate` is a fixed point under reduction; on a
   product of independent binary choices the generator keeps exactly one clue per
   choice; `permutation` is always a bijection.
 - **Soundness of the sudoku techniques** (`fast-check`): over generated 4x4, 6x6
