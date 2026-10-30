@@ -27,9 +27,11 @@ the explain output pinned against the published 0.2.0 (ADR-0003) is unchanged.
 So existing callers see the same text, and the data and the sentence cannot
 drift apart.
 
-Japanese names say what a pattern means instead of transliterating the
-English term (for example 「ここだけ」 for hidden single, 「2本の柱」 for
-skyscraper). Cells are written 「3行5列」 and boxes 「ブロック」, numbered left
+Japanese sentences keep the English technique labels (Hidden single, X-wing
+and so on), the names solvers search for. (0.4.0 shipped names that described
+each pattern in Japanese, such as 「ここだけ」 for hidden single; the release after
+it switched to the labels, since they are what other guides and tools call the
+techniques.) Cells are written 「3行5列」 and boxes 「ブロック」, numbered left
 to right, top to bottom. Internal technique names (`'hidden single'` and so on)
 stay English, so code that compares them is unaffected.
 

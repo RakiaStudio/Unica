@@ -42,7 +42,8 @@ const values = (items: readonly number[]): string[] => items.map(symbol);
 // English. These sentences are the `reason` of every step, so they must not
 // change: explain output is pinned against earlier releases.
 
-const LABELS_EN: Readonly<Record<TechniqueName, string>> = {
+/** Display names of the techniques, shared by both bundled locales. */
+const LABELS: Readonly<Record<TechniqueName, string>> = {
   'naked single': 'Naked single',
   'hidden single': 'Hidden single',
   'naked pair': 'Naked pair',
@@ -86,7 +87,7 @@ export const english: Locale = {
   technique: (name) => name,
   difficulty: (level) => level,
   reason({ technique, detail }) {
-    const label = LABELS_EN[technique];
+    const label = LABELS[technique];
     switch (detail.pattern) {
       case 'naked single':
         return `${label}: ${cellEn(detail.cell)} can only be ${symbol(detail.value)}`;
@@ -139,27 +140,8 @@ export const english: Locale = {
 };
 
 // ---------------------------------------------------------------------------
-// Japanese. Technique names say what the pattern means rather than
-// transliterating the English; cells are written as 3行5列, boxes as ブロック.
-
-const NAMES_JA: Readonly<Record<TechniqueName, string>> = {
-  'naked single': '残り1つ',
-  'hidden single': 'ここだけ',
-  'naked pair': '候補の組（2つ）',
-  'hidden pair': '居場所の組（2つ）',
-  pointing: 'ブロックからの締め出し',
-  claiming: '行・列からの締め出し',
-  'naked triple': '候補の組（3つ）',
-  'hidden triple': '居場所の組（3つ）',
-  'x-wing': '2本の長方形',
-  'naked quad': '候補の組（4つ）',
-  'hidden quad': '居場所の組（4つ）',
-  swordfish: '3本の網',
-  skyscraper: '2本の柱',
-  '2-string kite': '凧',
-  'xy-wing': '挟み撃ち',
-  'xyz-wing': '3候補の挟み撃ち',
-};
+// Japanese. Technique names stay the English labels (X-wing and so on), the
+// names solvers search for; cells are written as 3行5列, boxes as ブロック.
 
 const DIFFICULTIES_JA: Readonly<Record<Difficulty, string>> = {
   easy: 'やさしい',
@@ -187,10 +169,10 @@ const candidatesJa = ({ cell, values: held }: CellCandidates): string =>
   `${cellJa(cell)}（${orJa(values(held))}）`;
 
 export const japanese: Locale = {
-  technique: (name) => NAMES_JA[name],
+  technique: (name) => LABELS[name],
   difficulty: (level) => DIFFICULTIES_JA[level],
   reason({ technique, detail }) {
-    const name = NAMES_JA[technique];
+    const name = LABELS[technique];
     switch (detail.pattern) {
       case 'naked single':
         return `${name}：${cellJa(detail.cell)} に入るのは ${symbol(detail.value)} だけ`;
@@ -240,7 +222,7 @@ export const japanese: Locale = {
     }
     return hardest === undefined
       ? `解けました：手順は要りません（${DIFFICULTIES_JA.easy}）。`
-      : `解けました：難易度は「${DIFFICULTIES_JA[difficulty]}」、最も強い手筋は「${NAMES_JA[hardest]}」です。`;
+      : `解けました：難易度は「${DIFFICULTIES_JA[difficulty]}」、最も強い手筋は「${LABELS[hardest]}」です。`;
   },
   line: (number, reason) => `${String(number)}. ${reason}`,
 };

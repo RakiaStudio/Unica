@@ -106,13 +106,13 @@ s.explain(puzzle.text.puzzle);
 
 ```ts
 s.explain(puzzle.text.puzzle, { locale: 'ja' });
-// [ '1. 残り1つ：1行3列 に入るのは 8 だけ',
-//   '2. ここだけ：2行目で 6 が入るのは 2行2列 だけ',
+// [ '1. Naked single：1行3列 に入るのは 8 だけ',
+//   '2. Hidden single：2行目で 6 が入るのは 2行2列 だけ',
 //   ...
-//   '解けました：難易度は「ふつう」、最も強い手筋は「候補の組（2つ）」です。' ]
+//   '解けました：難易度は「ふつう」、最も強い手筋は「Naked pair」です。' ]
 ```
 
-日本語の手筋名は、英語をカタカナにせず意味で付けています（例：hidden single は「ここだけ」、skyscraper は「2本の柱」）。マスは「3行5列」、3x3 の区画は「ブロック」と書き、ブロックは左から右、上から下の順に番号を振ります。
+日本語の説明でも、手筋名は英語のまま（Hidden single、X-wing など）出します。解き方の解説を探すときに、そのまま検索できる名前だからです。マスは「3行5列」、3x3 の区画は「ブロック」と書き、ブロックは左から右、上から下の順に番号を振ります。
 
 それ以外の言語は、自分で `Locale` オブジェクト（`technique`、`difficulty`、`reason`、`summary`、`line`）を渡せば使えます。`src/puzzles/sudoku/locales.ts` の `english` と `japanese` が完全な例です。`step.reason` はこれまでどおり英語の文のままです（[ADR-0004](./docs/adr/0004-explanations-from-step-data.md)）。
 

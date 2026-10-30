@@ -146,12 +146,10 @@ describe('generate with a difficulty', () => {
     expect(lines.at(-1)).toBe('Solved: medium, hardest technique naked pair.');
     const ja = s.explain(puzzle.text.puzzle, { locale: 'ja' });
     expect(ja.slice(0, 2)).toEqual([
-      '1. 残り1つ：1行3列 に入るのは 8 だけ',
-      '2. ここだけ：2行目で 6 が入るのは 2行2列 だけ',
+      '1. Naked single：1行3列 に入るのは 8 だけ',
+      '2. Hidden single：2行目で 6 が入るのは 2行2列 だけ',
     ]);
-    expect(ja.at(-1)).toBe(
-      '解けました：難易度は「ふつう」、最も強い手筋は「候補の組（2つ）」です。',
-    );
+    expect(ja.at(-1)).toBe('解けました：難易度は「ふつう」、最も強い手筋は「Naked pair」です。');
   });
 
   for (const difficulty of TARGET_DIFFICULTIES) {
