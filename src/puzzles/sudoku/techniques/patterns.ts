@@ -10,6 +10,11 @@
  * - Skyscraper: two rows (or two columns) whose near ends share a column (or
  *   row).
  * - 2-string kite: a row and a column whose near ends share a box.
+ * - Empty rectangle: a box where the symbol can only go in one row and one
+ *   column of the box, and a strong link outside the box with one end in that
+ *   row (or column). If the cell where the box's column (or row) meets the far
+ *   end's row (or column) held the symbol, the far end would not, so the near
+ *   end would; then the box would have no place left for the symbol.
  */
 
 import {
@@ -26,13 +31,13 @@ import {
 } from '../candidates.js';
 import { makeStep } from './step.js';
 
-interface Link {
+export interface Link {
   readonly unit: Unit;
   readonly cells: readonly [number, number];
 }
 
 /** Units where `value` is still missing and has exactly two places. */
-function links(grid: CandidateGrid, units: readonly Unit[], value: number): Link[] {
+export function links(grid: CandidateGrid, units: readonly Unit[], value: number): Link[] {
   const result: Link[] = [];
   for (const unit of units) {
     if (unit.cells.some((cell) => at(grid.values, cell) === value)) continue;
@@ -128,6 +133,83 @@ export function twoStringKite(grid: CandidateGrid): Step | undefined {
           return box === at(boxOf, b) ? at(boxes, box) : undefined;
         });
         if (step !== undefined) return step;
+      }
+    }
+  }
+  return undefined;
+}
+
+/** Rows or columns of a box, as unit indices. */
+function linesOfBox(start: number, size: number): number[] {
+  return Array.from({ length: size }, (_, i) => start + i);
+}
+
+export function emptyRectangle(grid: CandidateGrid): Step | undefined {
+  const { n, boxRows, boxCols, rows, columns, boxes } = grid.geometry;
+  for (let value = 1; value <= n; value++) {
+    const rowLinks = links(grid, rows, value);
+    const columnLinks = links(grid, columns, value);
+    for (const box of boxes) {
+      if (box.cells.some((cell) => at(grid.values, cell) === value)) continue;
+      const places = box.cells.filter((cell) => hasCandidate(at(grid.candidates, cell), value));
+      if (places.length < 2) continue;
+      const first = at(box.cells, 0);
+      const boxRowsHere = linesOfBox(Math.floor(first / n), boxRows);
+      const boxColsHere = linesOfBox(first % n, boxCols);
+      // Not confined to one line of the box: that would be pointing.
+      if (new Set(places.map((cell) => Math.floor(cell / n))).size < 2) continue;
+      if (new Set(places.map((cell) => cell % n)).size < 2) continue;
+      for (const r of boxRowsHere) {
+        for (const c of boxColsHere) {
+          if (!places.every((cell) => Math.floor(cell / n) === r || cell % n === c)) continue;
+          const row = at(rows, r);
+          const column = at(columns, c);
+          // A column link outside the box with one end in row r: the far end's
+          // row meets column c at the target.
+          for (const link of columnLinks) {
+            if (boxColsHere.includes(link.unit.index)) continue;
+            for (const [near, far] of [
+              [link.cells[0], link.cells[1]],
+              [link.cells[1], link.cells[0]],
+            ] satisfies [number, number][]) {
+              const farRow = Math.floor(far / n);
+              if (Math.floor(near / n) !== r || boxRowsHere.includes(farRow)) continue;
+              const target = farRow * n + c;
+              if (!hasCandidate(at(grid.candidates, target), value)) continue;
+              return makeStep('empty rectangle', [], [cellValue(n, target, value)], {
+                pattern: 'empty rectangle',
+                value,
+                box: unitRef(box),
+                row: unitRef(row),
+                column: unitRef(column),
+                link: unitRef(link.unit),
+                ends: [cellRef(n, near), cellRef(n, far)],
+              });
+            }
+          }
+          // The same with a row link and column c.
+          for (const link of rowLinks) {
+            if (boxRowsHere.includes(link.unit.index)) continue;
+            for (const [near, far] of [
+              [link.cells[0], link.cells[1]],
+              [link.cells[1], link.cells[0]],
+            ] satisfies [number, number][]) {
+              const farCol = far % n;
+              if (near % n !== c || boxColsHere.includes(farCol)) continue;
+              const target = r * n + farCol;
+              if (!hasCandidate(at(grid.candidates, target), value)) continue;
+              return makeStep('empty rectangle', [], [cellValue(n, target, value)], {
+                pattern: 'empty rectangle',
+                value,
+                box: unitRef(box),
+                row: unitRef(row),
+                column: unitRef(column),
+                link: unitRef(link.unit),
+                ends: [cellRef(n, near), cellRef(n, far)],
+              });
+            }
+          }
+        }
       }
     }
   }

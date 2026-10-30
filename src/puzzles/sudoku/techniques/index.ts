@@ -18,8 +18,8 @@
 
 import type { CandidateGrid, Step, TechniqueName } from '../candidates.js';
 import { claiming, pointing } from './intersections.js';
-import { swordfish, xWing } from './fish.js';
-import { skyscraper, twoStringKite } from './patterns.js';
+import { finnedSwordfish, finnedXWing, jellyfish, swordfish, xWing } from './fish.js';
+import { emptyRectangle, skyscraper, twoStringKite } from './patterns.js';
 import { hiddenSingle, nakedSingle } from './singles.js';
 import {
   hiddenPair,
@@ -29,18 +29,25 @@ import {
   nakedQuad,
   nakedTriple,
 } from './subsets.js';
-import { xyWing, xyzWing } from './wings.js';
+import { wWing, wxyzWing, xyWing, xyzWing } from './wings.js';
 
 /** `beyond` means the techniques below could not finish the puzzle. */
-export type Difficulty = 'easy' | 'medium' | 'hard' | 'expert' | 'beyond';
+export type Difficulty = 'easy' | 'medium' | 'hard' | 'expert' | 'master' | 'beyond';
 
 /** Ordered from easiest to hardest. */
-export const DIFFICULTIES: readonly Difficulty[] = ['easy', 'medium', 'hard', 'expert', 'beyond'];
+export const DIFFICULTIES: readonly Difficulty[] = [
+  'easy',
+  'medium',
+  'hard',
+  'expert',
+  'master',
+  'beyond',
+];
 
 /**
  * The difficulties `generate` can aim for. `beyond` is left out: it only says
  * that the techniques here got stuck, which covers puzzles from one step past
- * expert to far harder, so asking for it would not mean anything definite.
+ * master to far harder, so asking for it would not mean anything definite.
  */
 export type TargetDifficulty = Exclude<Difficulty, 'beyond'>;
 
@@ -49,6 +56,7 @@ export const TARGET_DIFFICULTIES: readonly TargetDifficulty[] = [
   'medium',
   'hard',
   'expert',
+  'master',
 ];
 
 export interface Technique {
@@ -76,8 +84,17 @@ export const TECHNIQUES: readonly Technique[] = [
   { name: '2-string kite', level: 'expert', find: twoStringKite },
   { name: 'xy-wing', level: 'expert', find: xyWing },
   { name: 'xyz-wing', level: 'expert', find: xyzWing },
+  // Master, the level after expert. Within master, in the same family order as expert: fish, then
+  // single-digit patterns, then wings.
+  { name: 'jellyfish', level: 'master', find: jellyfish },
+  { name: 'finned x-wing', level: 'master', find: finnedXWing },
+  { name: 'finned swordfish', level: 'master', find: finnedSwordfish },
+  { name: 'empty rectangle', level: 'master', find: emptyRectangle },
+  { name: 'w-wing', level: 'master', find: wWing },
+  { name: 'wxyz-wing', level: 'master', find: wxyzWing },
 ];
 
 export { claiming, hiddenPair, hiddenSingle, hiddenTriple, nakedPair, nakedSingle, nakedTriple };
 export { pointing, xWing };
 export { hiddenQuad, nakedQuad, skyscraper, swordfish, twoStringKite, xyWing, xyzWing };
+export { emptyRectangle, finnedSwordfish, finnedXWing, jellyfish, wWing, wxyzWing };
