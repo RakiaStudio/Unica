@@ -342,8 +342,9 @@ checked on the 63 fixed pentominoes and the 8 tilings of the 3x20 rectangle.
 - **Across versions**: the puzzles, attempts, ratings and `explain` output that
   the published 0.2.0 returned for `generate({ seed, difficulty })` are
   fixtures, and this version must return the same.
-- **Coverage**: 99% statements as of 0.3.0 (the project keeps it at 95% or
-  more). The uncovered lines are defensive
+- **Coverage**: 99.23% statements, 97.6% branches and 100% functions as of
+  0.5.0 (the project keeps statements at 95% or more). The uncovered lines are
+  defensive
   branches for states the type system cannot rule out.
 - **The published package**: after every release, a workflow installs the new
   version from npm into an empty directory, as a user would, checks its registry
