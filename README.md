@@ -388,8 +388,9 @@ engine is a dependency and not a rewrite.
 ## Roadmap
 
 - **Playable demo** on GitHub Pages, generating in the browser.
-- **More reductions**: N-queens, kakuro, and other puzzles with a clean exact
-  cover formulation.
+- **More reductions**: N-queens and other puzzles with a clean exact cover
+  formulation, and ones like kakuro that need extra work to keep crossing sums
+  consistent.
 - **Alternative engines** behind `ExactCoverSolver` (WebAssembly, workers) once a
   workload needs them.
 

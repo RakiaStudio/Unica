@@ -276,7 +276,7 @@ npm run check       # lint + typecheck + test + build。CI と同じ
 ## ロードマップ
 
 - **遊べるデモ**（GitHub Pages、ブラウザ内で生成）。
-- **変換の追加**：N クイーン、カックロなど exact cover にきれいに落ちるもの。
+- **変換の追加**：N クイーンなど exact cover にきれいに落ちるものと、カックロのように一工夫いるもの（交わる2本で数字をそろえる）。
 - **代替エンジン**（WebAssembly、worker）を `ExactCoverSolver` の裏に、必要になったら。
 
 ## 貢献
