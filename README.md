@@ -147,6 +147,40 @@ Hard puzzles are rare (about 1 in 300 minimal 9x9 puzzles), so:
 
 Rating supports grids of up to 32 symbols.
 
+#### How the levels line up with a public rated bank
+
+unica's sudoku levels were compared with the ratings of the Sudoku Exchange
+Puzzle Bank (<https://github.com/grantm/sudoku-exchange-puzzle-bank>, commit
+`d8c8ebaee0c0`, public domain under the Unlicense). The bank's numbers are
+Sukaku Explainer (SE) ratings; the bank sorts its puzzles into four files by
+that rating. unica is not affiliated with Sudoku Exchange.
+
+Conditions: `@rakiastudio/unica` 0.6.0 installed from npm, 2000 puzzles from
+each file, taken every k-th line from the first (k = floor(lines / 2000), no
+random seed), 8000 in all, measured 2026-10-30.
+
+The correspondence below is unica's own choice: easy - `easy`, medium -
+`medium`, hard - `hard` or `expert`, diabolical - `master` or `beyond`.
+
+| bank file (SE ratings in the sample) | `easy` | `medium` | `hard` | `expert` | `master` | `beyond` | line up (by the mapping above) |
+| ------------------------------------ | -----: | -------: | -----: | -------: | -------: | -------: | -----------------------------: |
+| easy (1.2)                           |   2000 |        0 |      0 |        0 |        0 |        0 |                           2000 |
+| medium (1.5 - 2.3)                   |   1408 |      592 |      0 |        0 |        0 |        0 |                            592 |
+| hard (2.5 - 4.7)                     |      0 |      832 |    185 |      667 |      212 |      104 |                            852 |
+| diabolical (5.0 - 9.1)               |      0 |        0 |      0 |       11 |      559 |     1430 |                           1989 |
+
+5433 of 8000 line up; 2567 do not. Spearman's rank correlation between the SE
+rating and unica's level is 0.934. The two scales measure different things: SE
+scores each technique on its own scale, while unica names the hardest
+technique group a puzzle needed, and puts every single (hidden or naked) in
+`easy`. That is why most puzzles in the bank's medium file fall in unica's
+`easy` level. Neither scale is treated here as the correct one.
+
+To repeat it, take [`scripts/compare-se-bank.mjs`](https://github.com/RakiaStudio/Unica/blob/main/scripts/compare-se-bank.mjs) from the repository
+(it is not in the npm package) and run it where the package is installed,
+giving a directory for the bank files. It downloads the four files from that
+commit and stops unless each one has the SHA-256 recorded in the script.
+
 #### Explanations in other languages, and the data behind them
 
 Every step also carries what it was based on as data, `step.detail` (the
