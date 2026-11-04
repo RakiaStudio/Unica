@@ -18,6 +18,11 @@ export type Seed = number | string;
  * that human-readable seeds ("daily-2026-10-29") are as good as numeric ones.
  */
 export function createRng(seed: Seed): Rng {
+  if (typeof seed === 'number' && !Number.isFinite(seed)) {
+    // NaN and Infinity would hash fine but do not survive JSON, so a reported
+    // seed could not be passed back.
+    throw new RangeError(`seed must be a finite number or a string, got ${String(seed)}`);
+  }
   const [a0, b0, c0, d0] = hashSeed(seed);
   let a = a0;
   let b = b0;

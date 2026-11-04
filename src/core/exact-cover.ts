@@ -60,6 +60,29 @@ export function validateProblem<T>(problem: ExactCoverProblem<T>): void {
   });
 }
 
+/** Problem objects that have passed `validateProblem`, so later calls skip the work. */
+const checked = new WeakSet();
+
+/**
+ * Validate a problem the first time an entry point sees it. A malformed row
+ * would otherwise reach the engine, which can loop forever on an out-of-range
+ * column or answer wrongly on a repeated one. The result is remembered per
+ * problem object, so a problem must not be changed after its first use.
+ */
+export function ensureValid<T>(problem: ExactCoverProblem<T>): void {
+  if (checked.has(problem)) return;
+  validateProblem(problem);
+  checked.add(problem);
+}
+
+/**
+ * Record that a problem is valid without checking it: for problems built from
+ * the rows of a problem that already passed (a restriction or a reordering).
+ */
+export function markValid<T>(problem: ExactCoverProblem<T>): void {
+  checked.add(problem);
+}
+
 function checkColumns(
   columns: readonly number[],
   bound: number,
@@ -120,6 +143,7 @@ export function restrictToClues<T>(
   problem: ExactCoverProblem<T>,
   clues: Iterable<number>,
 ): RestrictedProblem<T> {
+  ensureValid(problem);
   const clueSet = new Set<number>();
   const coveredPrimary = new Uint8Array(problem.primaryColumns);
   const coveredSecondary = new Uint8Array(problem.secondaryColumns);
@@ -160,14 +184,13 @@ export function restrictToClues<T>(
     }
   });
 
-  return {
-    problem: {
-      primaryColumns: problem.primaryColumns,
-      secondaryColumns: problem.secondaryColumns,
-      rows,
-    },
-    rowMap,
+  const restricted: ExactCoverProblem<T> = {
+    primaryColumns: problem.primaryColumns,
+    secondaryColumns: problem.secondaryColumns,
+    rows,
   };
+  markValid(restricted);
+  return { problem: restricted, rowMap };
 }
 
 function conflicts<T>(row: ExactCoverRow<T>, primary: Uint8Array, secondary: Uint8Array): boolean {

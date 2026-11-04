@@ -51,7 +51,11 @@ export interface Queens {
   /** Row indices of the queens in board text. Whitespace between lines is ignored. */
   parse(text: string): number[];
   generate(options?: GenerateOptions): QueensGenerated;
-  /** The only completion of the queens in `text`, as board text, or `undefined` if none or several. */
+  /**
+   * The only completion of the queens in `text`, as board text, or `undefined` if
+   * none or several. Given queens that attack each other are malformed input, not
+   * "none": they throw `ExactCoverError`, as clashing givens do in `sudoku().solve`.
+   */
   solve(text: string): string | undefined;
 }
 

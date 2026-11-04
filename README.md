@@ -263,7 +263,8 @@ console.log(puzzle.text.solution); // the only way to finish it
 
 Rows and columns are primary columns (exactly one queen each); the diagonals
 are secondary columns (at most one queen each). `board.solve(text)` returns the
-only completion, or `undefined` when there is none or several.
+only completion, or `undefined` when there is none or several. Given queens that
+attack each other throw `ExactCoverError`, as clashing givens do in sudoku.
 
 ### Your own puzzle
 
@@ -384,7 +385,15 @@ The core API is small on purpose.
 `GenerateOptions`: `seed`, `solver`, `solution` (start from a known solution; one
 that is not an exact cover is rejected with `ExactCoverError`),
 `stopAtClues` (stop reducing early; the result is then unique but not guaranteed
-minimal, and `minimal` says so).
+minimal, and `minimal` says so; a non-negative integer). A number seed must be
+finite.
+
+A malformed problem (a column out of range, or listed twice in one row) is
+rejected with `ExactCoverError` the first time a function that takes a problem
+sees it: `classify`, `isUnique`, `isMinimal`, `solveUnique`, `restrictToClues`,
+`generate`, `randomSolution`, `DancingLinksSolver`, and the `solve` and
+`classify` of each puzzle. The check is remembered per
+problem object, so do not change a problem after its first use.
 
 All types are exported. `tsconfig` is `strict` with `noUncheckedIndexedAccess` and
 `exactOptionalPropertyTypes`; the codebase contains no `any`.

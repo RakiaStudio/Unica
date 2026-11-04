@@ -1,5 +1,5 @@
 import { DancingLinks } from 'dancing-links';
-import type { ExactCoverProblem, Solution } from './exact-cover.js';
+import { ensureValid, type ExactCoverProblem, type Solution } from './exact-cover.js';
 
 /**
  * The one capability unica needs from an exact cover engine: enumerate up to
@@ -28,6 +28,7 @@ export class DancingLinksSolver implements ExactCoverSolver {
     if (!Number.isInteger(limit) || limit < 1) {
       throw new RangeError(`limit must be a positive integer, got ${String(limit)}`);
     }
+    ensureValid(problem);
     if (problem.primaryColumns === 0) {
       // The empty selection covers zero primary columns exactly once each.
       return [[]];

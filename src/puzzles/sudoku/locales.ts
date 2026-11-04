@@ -175,7 +175,7 @@ export const english: Locale = {
   },
   summary({ solved, difficulty, hardest }) {
     if (!solved) {
-      return 'Stuck: none of the rated techniques applies here (beyond). The puzzle may still have one solution; it needs techniques stronger than wxyz-wing.';
+      return 'Stuck: none of the rated techniques applies here (beyond). Even if the puzzle has one solution, these techniques alone cannot finish it.';
     }
     return hardest === undefined
       ? 'Solved: nothing to do (easy).'

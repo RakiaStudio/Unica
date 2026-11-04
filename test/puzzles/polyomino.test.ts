@@ -97,6 +97,25 @@ describe('polyominoTiling()', () => {
     ).toThrow(/no cells/);
   });
 
+  it('rejects pieces, holes and names it cannot place or print', () => {
+    const one = (name: string, cells: readonly (readonly [number, number])[]) =>
+      polyominoTiling({ width: 2, height: 1, pieces: [{ name, cells }] });
+    expect(() =>
+      one('a', [
+        [0, 0],
+        [0, 0],
+      ]),
+    ).toThrow(/piece 'a': cell \[0, 0\] is listed twice/);
+    expect(() => one('a', [[0.5, 0]])).toThrow(/is not a pair of integers/);
+    for (const name of ['', '.', '#']) {
+      expect(() => one(name, [[0, 0]])).toThrow(/is reserved or empty/);
+    }
+    const piece = { name: 'a', cells: [[0, 0]] as const };
+    expect(() =>
+      polyominoTiling({ width: 2, height: 1, pieces: [piece], holes: [[0.5, 0]] }),
+    ).toThrow(/hole \[0.5, 0\] is not a pair of integers/);
+  });
+
   it('finds all 8 tilings of the 3x20 rectangle with pentominoes', () => {
     // 2 solutions up to symmetry (Golomb), times the 4 symmetries of a rectangle.
     const tiling = polyominoTiling({ width: 20, height: 3, pieces: PENTOMINOES });
@@ -108,6 +127,27 @@ describe('polyominoTiling()', () => {
       expect(text).not.toContain('.');
       expect(new Set(text.replace(/\n/g, '')).size).toBe(12);
     }
+  });
+
+  it('ignores holes outside the board, as it always did', () => {
+    const domino = {
+      name: 'd',
+      cells: [
+        [0, 0],
+        [1, 0],
+      ] as const,
+    };
+    const plain = polyominoTiling({ width: 2, height: 1, pieces: [domino] });
+    const withStray = polyominoTiling({
+      width: 2,
+      height: 1,
+      pieces: [domino],
+      holes: [
+        [5, 5],
+        [-1, 0],
+      ],
+    });
+    expect(withStray.problem()).toEqual(plain.problem());
   });
 
   it('treats holes as cells that need no cover', () => {

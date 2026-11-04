@@ -5,7 +5,7 @@
  *
  * - `core`: the exact cover model, the engine adapter, uniqueness classification
  *   and the clue-reduction generator. Puzzle-agnostic.
- * - `puzzles/*`: reductions of concrete puzzles (sudoku, polyomino tiling) to
+ * - `puzzles/*`: reductions of concrete puzzles (sudoku, polyomino tiling, N queens) to
  *   exact cover, plus parsing and formatting for their natural notations.
  */
 

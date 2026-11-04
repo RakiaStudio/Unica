@@ -7,6 +7,7 @@ import {
   isUnique,
   randomSolution,
   type ExactCoverProblem,
+  type ExactCoverSolver,
 } from '../../src/index.js';
 import { knuthExample, knuthSolution } from '../fixtures/knuth.js';
 
@@ -127,5 +128,40 @@ describe('generate: options.solution validation', () => {
   it('accepts a valid solution in any order and normalises it', () => {
     const puzzle = generate(eightSolutions, { seed: 'order', solution: [5, 2, 1] });
     expect(puzzle.solution).toEqual([1, 2, 5]);
+  });
+});
+
+describe('generate: option checks', () => {
+  it('rejects a stopAtClues that is not a non-negative integer', () => {
+    for (const stopAtClues of [Number.NaN, -1, 2.5]) {
+      expect(() => generate(knuthExample, { seed: 1, stopAtClues })).toThrow(
+        /stopAtClues must be a non-negative integer/,
+      );
+    }
+  });
+
+  it('rejects a number seed that is not finite', () => {
+    for (const seed of [Number.NaN, Number.POSITIVE_INFINITY]) {
+      expect(() => generate(knuthExample, { seed })).toThrow(RangeError);
+    }
+  });
+
+  it('passes an error from the engine through instead of renaming it', () => {
+    const broken: ExactCoverSolver = {
+      solve: () => {
+        throw new ExactCoverError('engine broke');
+      },
+    };
+    expect(() => generate(knuthExample, { seed: 1, solution: [1, 3, 5], solver: broken })).toThrow(
+      'engine broke',
+    );
+  });
+
+  it('calls a solution whose rows clash "not an exact cover"', () => {
+    // Knuth's rows 0 and 1 share column 3.
+    expect(() => generate(knuthExample, { seed: 1, solution: [0, 1] })).toThrow(
+      /not an exact cover/,
+    );
+    expect(() => generate(knuthExample, { seed: 1, solution: [99] })).toThrow(/not an exact cover/);
   });
 });

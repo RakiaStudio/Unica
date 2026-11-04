@@ -289,6 +289,11 @@ describe('japanese', () => {
     expect(japanese.summary({ solved: false, difficulty: 'beyond', hardest: undefined })).toMatch(
       /^ここで手が止まりました（判定外）/,
     );
+    // An input with no solution or several is also 'beyond', so the summary
+    // must not claim that stronger techniques would finish it.
+    expect(english.summary({ solved: false, difficulty: 'beyond', hardest: undefined })).toBe(
+      'Stuck: none of the rated techniques applies here (beyond). Even if the puzzle has one solution, these techniques alone cannot finish it.',
+    );
     expect(japanese.summary({ solved: true, difficulty: 'easy', hardest: undefined })).toBe(
       '解けました：手順は要りません（やさしい）。',
     );

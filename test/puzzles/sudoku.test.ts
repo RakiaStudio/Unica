@@ -82,6 +82,15 @@ describe('sudoku() text notation', () => {
     expect(() => s.parse(SEVENTEEN.replace('4', 'Z'))).toThrow(/not a symbol/);
   });
 
+  it('upper-cases only ASCII letters', () => {
+    // 'ı' (dotless i) and 'ſ' (long s) upper-case to I and S in JavaScript.
+    const s = sudoku({ boxRows: 5, boxCols: 5 });
+    const grid = (char: string): string => char + '.'.repeat(624);
+    expect(s.parse(grid('i'))).toEqual(s.parse(grid('I')));
+    expect(() => s.parse(grid('ı'))).toThrow(/not a symbol/);
+    expect(() => s.parse(grid('ſ'))).toThrow(/not a symbol/);
+  });
+
   it('uses letters beyond 9 for larger grids', () => {
     const s = sudoku({ boxRows: 4, boxCols: 4 });
     const index = s.rowIndex({ row: 0, col: 0, value: 16 });

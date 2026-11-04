@@ -1,6 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import {
+  DancingLinksSolver,
+  ExactCoverError,
   classify,
+  createRng,
+  generate,
+  randomSolution,
   isMinimal,
   isUnique,
   solveUnique,
@@ -76,5 +81,48 @@ describe('isUnique / solveUnique / isMinimal', () => {
     expect(isMinimal(knuthExample, [1])).toBe(false);
     // Not unique at all: not minimal either.
     expect(isMinimal(fourSolutions, [0])).toBe(false);
+  });
+});
+
+describe('malformed problems are rejected at the entry points', () => {
+  /** Row 0 names column 5 of a 2-column problem. Before 0.7.0 the engine never returned. */
+  const outOfRange: ExactCoverProblem<number> = {
+    primaryColumns: 2,
+    secondaryColumns: 0,
+    rows: [
+      { option: 0, primary: [0, 5] },
+      { option: 1, primary: [1] },
+    ],
+  };
+  /** Row 0 lists column 0 twice. Before 0.7.0 classify answered 'none'. */
+  const repeated: ExactCoverProblem<number> = {
+    primaryColumns: 2,
+    secondaryColumns: 0,
+    rows: [
+      { option: 0, primary: [0, 0] },
+      { option: 1, primary: [1] },
+    ],
+  };
+
+  it('classify, solveUnique and isMinimal throw instead of looping or answering wrongly', () => {
+    for (const problem of [outOfRange, repeated]) {
+      expect(() => classify(problem, [])).toThrow(ExactCoverError);
+      expect(() => solveUnique(problem, [])).toThrow(ExactCoverError);
+      expect(() => isMinimal(problem, [])).toThrow(ExactCoverError);
+    }
+    expect(() => classify(outOfRange, [])).toThrow(/row 0: primary column 5 is out of range/);
+    expect(() => classify(repeated, [])).toThrow(/row 0: primary column 0 listed twice/);
+  });
+
+  it('generate, randomSolution and the engine throw too', () => {
+    expect(() => generate(outOfRange, { seed: 1 })).toThrow(ExactCoverError);
+    expect(() => randomSolution(outOfRange, createRng(1))).toThrow(ExactCoverError);
+    expect(() => new DancingLinksSolver().solve(outOfRange, 2)).toThrow(ExactCoverError);
+  });
+
+  it('keeps answering for a valid problem used many times', () => {
+    for (let i = 0; i < 3; i++) {
+      expect(classify(fourSolutions, [0, 2]).count).toBe('unique');
+    }
   });
 });
