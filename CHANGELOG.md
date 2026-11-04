@@ -1,5 +1,12 @@
 # @rakiastudio/unica
 
+## 0.6.2
+
+### Patch Changes
+
+- 3249a53: README (en, ja): link to RakiaStudio (https://rakiastudio.com), who makes
+  unica. No code in the package changes.
+
 ## 0.6.1
 
 ### Patch Changes
