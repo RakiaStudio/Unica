@@ -8,6 +8,12 @@ version:
 - `generate` with a `stopAtClues` that is not a non-negative integer (for
   example `-1`, `1.5` or `Infinity`): `ExactCoverError`.
 - A number seed that is not finite (`NaN`, `Infinity`): `RangeError`.
+- `polyominoTiling` with a piece named '', '.' or '#' (the characters `format`
+  uses for uncovered cells and holes): `ExactCoverError`.
+- `polyominoTiling` with a piece that lists a cell twice or has a cell that is
+  not a pair of integers: `ExactCoverError`.
+- `polyominoTiling` with a hole that is not a pair of integers:
+  `ExactCoverError`. Holes outside the board are still ignored.
 
 Malformed input is also refused with a clear `ExactCoverError` instead of being
 passed on:
@@ -18,9 +24,6 @@ passed on:
   `randomSolution`, `DancingLinksSolver`, and the `solve` and `classify` of
   each puzzle). Before, the engine could run without returning, or answer
   'none'.
-- `polyominoTiling` refuses pieces with a repeated or non-integer cell, holes
-  that are not pairs of integers, and the piece names '', '.' and '#'. Holes
-  outside the board are still ignored.
 - A clashing `options.solution` reports "not an exact cover"; an error from the
   engine itself is passed through unchanged.
 - Sudoku notation upper-cases only ASCII letters, so 'ı' and 'ſ' are no longer
