@@ -65,6 +65,12 @@ describe('queens()', () => {
     expect(board.solve('.'.repeat(16))).toBeUndefined();
   });
 
+  it('throws on given queens that attack each other, as sudoku does on clashing givens', () => {
+    const board = queens({ n: 8 });
+    expect(() => board.solve('QQ......' + '.'.repeat(56))).toThrow(ExactCoverError);
+    expect(() => board.solve('Q.......' + '.Q......' + '.'.repeat(48))).toThrow(/clues conflict/);
+  });
+
   it('generates a unique, minimal, reproducible puzzle', () => {
     const board = queens();
     const puzzle = board.generate({ seed: 'queens' });

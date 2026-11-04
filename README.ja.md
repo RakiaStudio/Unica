@@ -193,7 +193,7 @@ console.log(puzzle.text.solution); // 完成させる唯一の方法
 //  ..Q.....
 ```
 
-行と列は主列（それぞれちょうど1つのクイーン）、斜めの線は副列（それぞれ多くても1つのクイーン）です。`board.solve(text)` は唯一の完成形を返し、無い・複数ならば `undefined` を返します。
+行と列は主列（それぞれちょうど1つのクイーン）、斜めの線は副列（それぞれ多くても1つのクイーン）です。`board.solve(text)` は唯一の完成形を返し、無い・複数ならば `undefined` を返します。互いに取り合う位置にクイーンが置かれているときは、数独で手がかりがぶつかるときと同じく `ExactCoverError` を投げます。
 
 ### 自作のパズル
 
@@ -292,7 +292,9 @@ flowchart LR
 | `polyominoTiling(options)`               | 変換、`orientations`、`format`、`generate`                                 |
 | `queens(options?)`                       | 変換、`parse`/`format`、`generate`、`solve`                                |
 
-`GenerateOptions`：`seed`、`solver`、`solution`（既知の解から始める。exact cover になっていない解は `ExactCoverError`）、`stopAtClues`（削減を途中で止める。結果は唯一解だが極小とは限らず、`minimal` がそれを示す）。
+`GenerateOptions`：`seed`、`solver`、`solution`（既知の解から始める。exact cover になっていない解は `ExactCoverError`）、`stopAtClues`（削減を途中で止める。結果は唯一解だが極小とは限らず、`minimal` がそれを示す。0 以上の整数）。数のシードは有限の数に限ります。
+
+形の崩れた問題（範囲の外の列や、1つの行で2回出てくる列）は、`classify`、`generate`、`randomSolution`、`DancingLinksSolver` が初めて受け取ったときに `ExactCoverError` で断ります。確かめた結果は問題のオブジェクトごとに覚えておくので、一度使った問題は書き換えないでください。
 
 型はすべて export しています。`tsconfig` は `strict` に加えて `noUncheckedIndexedAccess` と `exactOptionalPropertyTypes` を有効にしており、コードベースに `any` はありません。
 

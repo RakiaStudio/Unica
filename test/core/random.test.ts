@@ -45,6 +45,11 @@ describe('createRng', () => {
     }
   });
 
+  it('rejects a number seed that is not finite', () => {
+    expect(() => createRng(Number.NaN)).toThrow(RangeError);
+    expect(() => createRng(Number.NEGATIVE_INFINITY)).toThrow(RangeError);
+  });
+
   it('rejects an invalid bound', () => {
     expect(() => createRng(1).int(0)).toThrow(RangeError);
     expect(() => createRng(1).int(2.5)).toThrow(RangeError);

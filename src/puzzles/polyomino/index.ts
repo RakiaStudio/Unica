@@ -26,7 +26,10 @@ import { generate, type GeneratedPuzzle, type GenerateOptions } from '../../core
 export type Cell = readonly [x: number, y: number];
 
 export interface PolyominoShape {
-  /** Single character preferred: it is what `format` prints. */
+  /**
+   * Single character preferred: it is what `format` prints. Must not be empty,
+   * `.` or `#`, which `format` uses for uncovered cells and holes.
+   */
   readonly name: string;
   readonly cells: readonly Cell[];
 }
@@ -84,9 +87,40 @@ export function polyominoTiling(options: PolyominoOptions): PolyominoTiling {
   }
   const names = new Set<string>();
   for (const piece of pieces) {
+    if (piece.name === '' || piece.name === '.' || piece.name === '#') {
+      throw new ExactCoverError(`piece name '${piece.name}' is reserved or empty`);
+    }
     if (names.has(piece.name)) throw new ExactCoverError(`duplicate piece name '${piece.name}'`);
     if (piece.cells.length === 0) throw new ExactCoverError(`piece '${piece.name}' has no cells`);
+    const seen = new Set<string>();
+    for (const [x, y] of piece.cells) {
+      if (!Number.isInteger(x) || !Number.isInteger(y)) {
+        throw new ExactCoverError(
+          `piece '${piece.name}': cell [${String(x)}, ${String(y)}] is not a pair of integers`,
+        );
+      }
+      if (seen.has(cellKey(x, y))) {
+        throw new ExactCoverError(
+          `piece '${piece.name}': cell [${String(x)}, ${String(y)}] is listed twice`,
+        );
+      }
+      seen.add(cellKey(x, y));
+    }
     names.add(piece.name);
+  }
+  for (const [x, y] of options.holes ?? []) {
+    if (
+      !Number.isInteger(x) ||
+      !Number.isInteger(y) ||
+      x < 0 ||
+      y < 0 ||
+      x >= width ||
+      y >= height
+    ) {
+      throw new ExactCoverError(
+        `hole [${String(x)}, ${String(y)}] is not a cell of the ${String(width)}x${String(height)} board`,
+      );
+    }
   }
   const rotations = options.rotations ?? true;
   const reflections = options.reflections ?? true;

@@ -217,7 +217,8 @@ export function sudoku(options: SudokuOptions = {}): Sudoku {
       .join('\n');
 
   const parse = (text: string): number[] => {
-    // The notation is ASCII-only (digits, letters, `.`), so code-point iteration is exact.
+    // The notation is ASCII-only (digits, letters, `.`). Only ASCII letters are
+    // upper-cased: `toUpperCase` would also turn 'ı' into 'I' and 'ſ' into 'S'.
     const chars = Array.from(text.replace(/\s+/g, ''));
     if (chars.length !== cells) {
       throw new ExactCoverError(`expected ${String(cells)} cells, got ${String(chars.length)}`);
@@ -225,7 +226,7 @@ export function sudoku(options: SudokuOptions = {}): Sudoku {
     const clues: number[] = [];
     chars.forEach((char, cell) => {
       if (char === '.' || char === '0') return;
-      const value = SYMBOLS.indexOf(char.toUpperCase()) + 1;
+      const value = SYMBOLS.indexOf(/^[a-z]$/.test(char) ? char.toUpperCase() : char) + 1;
       if (value < 1 || value > n) {
         throw new ExactCoverError(
           `cell ${String(cell)}: '${char}' is not a symbol in 1..${String(n)}`,

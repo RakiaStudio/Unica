@@ -97,6 +97,28 @@ describe('polyominoTiling()', () => {
     ).toThrow(/no cells/);
   });
 
+  it('rejects pieces, holes and names it cannot place or print', () => {
+    const one = (name: string, cells: readonly (readonly [number, number])[]) =>
+      polyominoTiling({ width: 2, height: 1, pieces: [{ name, cells }] });
+    expect(() =>
+      one('a', [
+        [0, 0],
+        [0, 0],
+      ]),
+    ).toThrow(/piece 'a': cell \[0, 0\] is listed twice/);
+    expect(() => one('a', [[0.5, 0]])).toThrow(/is not a pair of integers/);
+    for (const name of ['', '.', '#']) {
+      expect(() => one(name, [[0, 0]])).toThrow(/is reserved or empty/);
+    }
+    const piece = { name: 'a', cells: [[0, 0]] as const };
+    expect(() =>
+      polyominoTiling({ width: 1, height: 1, pieces: [piece], holes: [[5, 5]] }),
+    ).toThrow(/hole \[5, 5\] is not a cell of the 1x1 board/);
+    expect(() =>
+      polyominoTiling({ width: 2, height: 1, pieces: [piece], holes: [[0.5, 0]] }),
+    ).toThrow(ExactCoverError);
+  });
+
   it('finds all 8 tilings of the 3x20 rectangle with pentominoes', () => {
     // 2 solutions up to symmetry (Golomb), times the 4 symmetries of a rectangle.
     const tiling = polyominoTiling({ width: 20, height: 3, pieces: PENTOMINOES });

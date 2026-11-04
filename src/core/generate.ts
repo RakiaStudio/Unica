@@ -1,5 +1,11 @@
 import { classify } from './classify.js';
-import { ExactCoverError, type ExactCoverProblem, type Solution } from './exact-cover.js';
+import {
+  ExactCoverError,
+  ensureValid,
+  markValid,
+  type ExactCoverProblem,
+  type Solution,
+} from './exact-cover.js';
 import { createRng, permutation, type Rng, type Seed } from './random.js';
 import { getDefaultSolver, type ExactCoverSolver } from './solver.js';
 
@@ -54,6 +60,13 @@ export function generate<T>(
   problem: ExactCoverProblem<T>,
   options: GenerateOptions = {},
 ): GeneratedPuzzle {
+  ensureValid(problem);
+  const stopAt = options.stopAtClues ?? 0;
+  if (!Number.isInteger(stopAt) || stopAt < 0) {
+    throw new ExactCoverError(
+      `stopAtClues must be a non-negative integer, got ${String(options.stopAtClues)}`,
+    );
+  }
   const seed = options.seed ?? freshSeed();
   const rng = createRng(seed);
   const solver = options.solver ?? getDefaultSolver();
@@ -64,7 +77,6 @@ export function generate<T>(
       : checkedSolution(problem, options.solution, solver);
   const clues = new Set<number>(solution);
   const removed: number[] = [];
-  const stopAt = options.stopAtClues ?? 0;
 
   let minimal = true;
   for (const position of permutation(solution.length, rng)) {
@@ -102,6 +114,7 @@ export function randomSolution<T>(
   rng: Rng,
   solver: ExactCoverSolver = getDefaultSolver(),
 ): Solution {
+  ensureValid(problem);
   const order = permutation(problem.rows.length, rng);
   const shuffled: ExactCoverProblem<T> = {
     primaryColumns: problem.primaryColumns,
@@ -112,6 +125,7 @@ export function randomSolution<T>(
       return row;
     }),
   };
+  markValid(shuffled);
   const found = solver.solve(shuffled, 1)[0];
   if (found === undefined) {
     throw new ExactCoverError('the problem has no solution, so no puzzle can be generated from it');
@@ -139,8 +153,15 @@ function checkedSolution<T>(
   solver: ExactCoverSolver,
 ): Solution {
   const sorted = [...new Set(candidate)].sort((a, b) => a - b);
-  const result = classify(problem, sorted, solver);
   const notACover = new ExactCoverError('options.solution is not an exact cover of the problem');
+  let result: ReturnType<typeof classify>;
+  try {
+    result = classify(problem, sorted, solver);
+  } catch (error) {
+    // Rows that clash or do not exist are just another way of not being a cover.
+    if (error instanceof ExactCoverError) throw notACover;
+    throw error;
+  }
   if (result.count !== 'unique' || result.solution === undefined) {
     throw notACover;
   }
