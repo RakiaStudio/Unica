@@ -85,7 +85,7 @@ describe('isUnique / solveUnique / isMinimal', () => {
 });
 
 describe('malformed problems are rejected at the entry points', () => {
-  /** Row 0 names column 5 of a 2-column problem. Before 0.6.3 the engine never returned. */
+  /** Row 0 names column 5 of a 2-column problem. Before 0.7.0 the engine never returned. */
   const outOfRange: ExactCoverProblem<number> = {
     primaryColumns: 2,
     secondaryColumns: 0,
@@ -94,7 +94,7 @@ describe('malformed problems are rejected at the entry points', () => {
       { option: 1, primary: [1] },
     ],
   };
-  /** Row 0 lists column 0 twice. Before 0.6.3 classify answered 'none'. */
+  /** Row 0 lists column 0 twice. Before 0.7.0 classify answered 'none'. */
   const repeated: ExactCoverProblem<number> = {
     primaryColumns: 2,
     secondaryColumns: 0,
