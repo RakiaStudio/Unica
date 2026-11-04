@@ -14,6 +14,8 @@ solution), **minimal** (every clue is necessary) and **reproducible** (a seed
 recreates the puzzle). Those three words are the whole product; the rest of this
 document explains how each one is guaranteed rather than hoped for.
 
+unica is made by [RakiaStudio](https://rakiastudio.com).
+
 日本語版は [README.ja.md](./README.ja.md) にあります。
 
 ## Why this exists
