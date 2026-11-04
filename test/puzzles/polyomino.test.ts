@@ -112,11 +112,8 @@ describe('polyominoTiling()', () => {
     }
     const piece = { name: 'a', cells: [[0, 0]] as const };
     expect(() =>
-      polyominoTiling({ width: 1, height: 1, pieces: [piece], holes: [[5, 5]] }),
-    ).toThrow(/hole \[5, 5\] is not a cell of the 1x1 board/);
-    expect(() =>
       polyominoTiling({ width: 2, height: 1, pieces: [piece], holes: [[0.5, 0]] }),
-    ).toThrow(ExactCoverError);
+    ).toThrow(/hole \[0.5, 0\] is not a pair of integers/);
   });
 
   it('finds all 8 tilings of the 3x20 rectangle with pentominoes', () => {
@@ -130,6 +127,27 @@ describe('polyominoTiling()', () => {
       expect(text).not.toContain('.');
       expect(new Set(text.replace(/\n/g, '')).size).toBe(12);
     }
+  });
+
+  it('ignores holes outside the board, as it always did', () => {
+    const domino = {
+      name: 'd',
+      cells: [
+        [0, 0],
+        [1, 0],
+      ] as const,
+    };
+    const plain = polyominoTiling({ width: 2, height: 1, pieces: [domino] });
+    const withStray = polyominoTiling({
+      width: 2,
+      height: 1,
+      pieces: [domino],
+      holes: [
+        [5, 5],
+        [-1, 0],
+      ],
+    });
+    expect(withStray.problem()).toEqual(plain.problem());
   });
 
   it('treats holes as cells that need no cover', () => {

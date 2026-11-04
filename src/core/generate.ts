@@ -2,7 +2,10 @@ import { classify } from './classify.js';
 import {
   ExactCoverError,
   ensureValid,
+  liftSolution,
   markValid,
+  restrictToClues,
+  type RestrictedProblem,
   type ExactCoverProblem,
   type Solution,
 } from './exact-cover.js';
@@ -154,18 +157,21 @@ function checkedSolution<T>(
 ): Solution {
   const sorted = [...new Set(candidate)].sort((a, b) => a - b);
   const notACover = new ExactCoverError('options.solution is not an exact cover of the problem');
-  let result: ReturnType<typeof classify>;
+  let restricted: RestrictedProblem<T>;
   try {
-    result = classify(problem, sorted, solver);
+    restricted = restrictToClues(problem, sorted);
   } catch (error) {
     // Rows that clash or do not exist are just another way of not being a cover.
+    // Only this step is caught: an error from the engine below passes through.
     if (error instanceof ExactCoverError) throw notACover;
     throw error;
   }
-  if (result.count !== 'unique' || result.solution === undefined) {
+  const solutions = solver.solve(restricted.problem, 2);
+  const first = solutions[0];
+  if (solutions.length !== 1 || first === undefined) {
     throw notACover;
   }
-  const found = result.solution;
+  const found = liftSolution(restricted, first);
   if (found.length !== sorted.length || !found.every((row, index) => row === sorted[index])) {
     throw notACover;
   }

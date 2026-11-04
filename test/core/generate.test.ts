@@ -7,6 +7,7 @@ import {
   isUnique,
   randomSolution,
   type ExactCoverProblem,
+  type ExactCoverSolver,
 } from '../../src/index.js';
 import { knuthExample, knuthSolution } from '../fixtures/knuth.js';
 
@@ -143,6 +144,17 @@ describe('generate: option checks', () => {
     for (const seed of [Number.NaN, Number.POSITIVE_INFINITY]) {
       expect(() => generate(knuthExample, { seed })).toThrow(RangeError);
     }
+  });
+
+  it('passes an error from the engine through instead of renaming it', () => {
+    const broken: ExactCoverSolver = {
+      solve: () => {
+        throw new ExactCoverError('engine broke');
+      },
+    };
+    expect(() => generate(knuthExample, { seed: 1, solution: [1, 3, 5], solver: broken })).toThrow(
+      'engine broke',
+    );
   });
 
   it('calls a solution whose rows clash "not an exact cover"', () => {

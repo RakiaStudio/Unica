@@ -1,19 +1,28 @@
 ---
-'@rakiastudio/unica': patch
+'@rakiastudio/unica': minor
 ---
 
-Malformed input is now refused with a clear `ExactCoverError` instead of being
+Inputs that were accepted silently until now and are refused from this
+version:
+
+- `generate` with a `stopAtClues` that is not a non-negative integer (for
+  example `-1`, `1.5` or `Infinity`): `ExactCoverError`.
+- A number seed that is not finite (`NaN`, `Infinity`): `RangeError`.
+
+Malformed input is also refused with a clear `ExactCoverError` instead of being
 passed on:
 
 - A problem with a column out of range, or listed twice in one row, is refused
-  the first time `classify`, `generate`, `randomSolution` or
-  `DancingLinksSolver` sees it. Before, the engine could run without returning,
-  or answer 'none'.
+  the first time a function that takes a problem sees it (`classify`,
+  `isUnique`, `isMinimal`, `solveUnique`, `restrictToClues`, `generate`,
+  `randomSolution`, `DancingLinksSolver`, and the `solve` and `classify` of
+  each puzzle). Before, the engine could run without returning, or answer
+  'none'.
 - `polyominoTiling` refuses pieces with a repeated or non-integer cell, holes
-  outside the board, and the piece names '', '.' and '#'.
-- `generate` refuses a `stopAtClues` that is not a non-negative integer, and a
-  number seed that is not finite (`RangeError`). A clashing `options.solution`
-  now reports "not an exact cover".
+  that are not pairs of integers, and the piece names '', '.' and '#'. Holes
+  outside the board are still ignored.
+- A clashing `options.solution` reports "not an exact cover"; an error from the
+  engine itself is passed through unchanged.
 - Sudoku notation upper-cases only ASCII letters, so 'ı' and 'ſ' are no longer
   read as I and S.
 

@@ -108,18 +108,11 @@ export function polyominoTiling(options: PolyominoOptions): PolyominoTiling {
     }
     names.add(piece.name);
   }
+  // A hole outside the board has nothing to remove and is ignored, as it always
+  // was; one that is not a pair of integers is a mistake.
   for (const [x, y] of options.holes ?? []) {
-    if (
-      !Number.isInteger(x) ||
-      !Number.isInteger(y) ||
-      x < 0 ||
-      y < 0 ||
-      x >= width ||
-      y >= height
-    ) {
-      throw new ExactCoverError(
-        `hole [${String(x)}, ${String(y)}] is not a cell of the ${String(width)}x${String(height)} board`,
-      );
+    if (!Number.isInteger(x) || !Number.isInteger(y)) {
+      throw new ExactCoverError(`hole [${String(x)}, ${String(y)}] is not a pair of integers`);
     }
   }
   const rotations = options.rotations ?? true;

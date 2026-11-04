@@ -294,7 +294,7 @@ flowchart LR
 
 `GenerateOptions`：`seed`、`solver`、`solution`（既知の解から始める。exact cover になっていない解は `ExactCoverError`）、`stopAtClues`（削減を途中で止める。結果は唯一解だが極小とは限らず、`minimal` がそれを示す。0 以上の整数）。数のシードは有限の数に限ります。
 
-形の崩れた問題（範囲の外の列や、1つの行で2回出てくる列）は、`classify`、`generate`、`randomSolution`、`DancingLinksSolver` が初めて受け取ったときに `ExactCoverError` で断ります。確かめた結果は問題のオブジェクトごとに覚えておくので、一度使った問題は書き換えないでください。
+形の崩れた問題（範囲の外の列や、1つの行で2回出てくる列）は、問題を受け取る関数（`classify`、`isUnique`、`isMinimal`、`solveUnique`、`restrictToClues`、`generate`、`randomSolution`、`DancingLinksSolver` と、各パズルの `solve`・`classify`）が初めて受け取ったときに `ExactCoverError` で断ります。確かめた結果は問題のオブジェクトごとに覚えておくので、一度使った問題は書き換えないでください。
 
 型はすべて export しています。`tsconfig` は `strict` に加えて `noUncheckedIndexedAccess` と `exactOptionalPropertyTypes` を有効にしており、コードベースに `any` はありません。
 

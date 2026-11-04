@@ -389,8 +389,10 @@ minimal, and `minimal` says so; a non-negative integer). A number seed must be
 finite.
 
 A malformed problem (a column out of range, or listed twice in one row) is
-rejected with `ExactCoverError` the first time `classify`, `generate`,
-`randomSolution` or `DancingLinksSolver` sees it. The check is remembered per
+rejected with `ExactCoverError` the first time a function that takes a problem
+sees it: `classify`, `isUnique`, `isMinimal`, `solveUnique`, `restrictToClues`,
+`generate`, `randomSolution`, `DancingLinksSolver`, and the `solve` and
+`classify` of each puzzle. The check is remembered per
 problem object, so do not change a problem after its first use.
 
 All types are exported. `tsconfig` is `strict` with `noUncheckedIndexedAccess` and
